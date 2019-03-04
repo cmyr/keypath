@@ -4,6 +4,7 @@ use std::marker::PhantomData;
 //mod lib2;
 mod lib3;
 mod value;
+mod json_keypath;
 
 
 //use serde::de::{Deserialize, IntoDeserializer};

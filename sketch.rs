@@ -14,19 +14,21 @@ let plugins: Vec<Box<dyn Plugin>>;
 trait Keyable: Deserialize {
     const TYPE: KeyableType;
     fn value_at_path<Val>(&self, path: KeySlice<Val>) -> Result<Val, ()>;
+    fn get_keypath_key<T: Keyable>(&self, key: &str) -> Result<&T, ()>;
+    fn get_keypath_index<T: Keyable>(&self, key: usize) -> Result<&T, ()>;
 }
 
 // impl sketch
 fn value_at_path<Val>(&self, path: KeySlice<Val>) -> Result<Val, ()> {
     match (Self::TYPE, path.component()) {
         (KeyableType::Map, KeyPathComponent::Member(key)) => 
-            self.get(key),
+            self.get_keypath_key(key),
         (KeyableType::List, KeyPathComponent::Index(idx)) =>
-            self.get_index(idx),
+            self.get_keypath_index(idx),
         (KeyableType::Value, KeyPathComponent::Terminal) =>
             Val::deserialize(self.into_deserializer())
     }
-}   
+}
 
 enum KeyableType {
     Map,

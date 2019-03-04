@@ -1,10 +1,11 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
+use crate::value::{Value, AsValue, TryFromValue, Error};
 
-trait Keyable {
-    fn value_at_path<Val>(&self, path: KeySlice<Val>) -> Result<&Val, ()>;
-    fn get_child<K: Keyable>(&self, key: &Key) -> Result<&K, ()>;
-    fn get_value<Val>(&self, key: &Key) -> Result<&Val, ()>;
+trait Keyable<'a> {
+    fn value_at_path<Val: TryFromValue<'a>>(&'a self, path: KeySlice<Val>) -> Result<Val, ()>;
+    fn get_child<K: Keyable<'a>>(&'a self, key: &Key) -> Result<&K, ()>;
+    fn get_value<Val: TryFromValue<'a>>(&'a self, key: &Key) -> Result<Val, ()>;
 }
 
 
@@ -26,9 +27,9 @@ struct BufferItems {
 impl Keyable for BufferItems {
     fn value_at_path<Val>(&self, path: KeySlice<Val>) -> Result<&Val, ()> {
         let (next_key, rest) = path.split_next();
-        match rest {
-            Some(rest) => self.get_child(next_key).map(|c| c.value_at_path(rest)),
-            None => self.get_value(next_key),
+        match (next_key, rest) {
+            (next_key, Some(rest)) => self.get_child(next_key)?.value_at_path(rest),
+            (next_key, None) => self.get_value(next_key),
         }
     }
 
