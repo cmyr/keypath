@@ -1,6 +1,5 @@
-
-use serde::de::{IntoDeserializer};
-use crate::value::{Value, AsValue, TryFromValue, Error};
+use crate::value::{AsValue, Error, TryFromValue, Value};
+use serde::de::IntoDeserializer;
 
 #[derive(Default)]
 struct BufferItems {
@@ -47,7 +46,6 @@ mod tests {
         items.use_tab_stops = true;
         items.wrap_width = 55;
         items.font_face = String::from("Rofls Sans");
-
 
         assert_eq!(items.value_for_key::<usize>("fake key"), Err("unknown key"));
         assert_eq!(items.value_for_key("word_wrap"), Ok(false));

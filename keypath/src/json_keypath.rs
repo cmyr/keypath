@@ -2,7 +2,6 @@ use serde::de::DeserializeOwned;
 use serde_json::{self, json, Value};
 use std::marker::PhantomData;
 
-
 trait Keyable {
     fn value_at_path(&self, path: KeySlice<Value>) -> Result<&Value, ()>;
 }
@@ -47,7 +46,7 @@ impl<'a> Key<'a> {
         }
 
         let result = match src.as_bytes()[0] {
-            b'0' ... b'9' => Key::Ord(src.parse().map_err(|_| ())?),
+            b'0'...b'9' => Key::Ord(src.parse().map_err(|_| ())?),
             other => Key::Name(src),
         };
         Ok(result)
@@ -106,7 +105,7 @@ impl<'a, Val> KeySlice<'a, Val> {
     fn transmute<T>(self) -> KeySlice<'a, T> {
         KeySlice {
             path: self.path,
-            value: PhantomData
+            value: PhantomData,
         }
     }
 }
@@ -119,7 +118,15 @@ mod tests {
     fn smoke_test_keypath() {
         let raw = "hello.world.5.friend";
         let kp: KeyPath<Value> = KeyPath::new(&raw).unwrap();
-        assert_eq!(kp.els, vec![Key::Name("hello"), Key::Name("world"), Key::Ord(5), Key::Name("friend")]);
+        assert_eq!(
+            kp.els,
+            vec![
+                Key::Name("hello"),
+                Key::Name("world"),
+                Key::Ord(5),
+                Key::Name("friend")
+            ]
+        );
     }
 
     #[test]
@@ -139,7 +146,6 @@ mod tests {
         assert_eq!(my_json.value_at_path(kp.as_slice()), Ok(&json!("nyc")));
         let kp = KeyPath::new("hello.smriti.hometown.nyc").unwrap();
         assert_eq!(my_json.value_at_path(kp.as_slice()), Err(()));
-
     }
 
     #[test]
@@ -155,8 +161,8 @@ mod tests {
             }
         });
 
-        let kp = KeyPath::new("hello.smriti.hometown").unwrap();
-        let hometown: String = my_json.value_at_path2(kp.as_slice()).unwrap();
+        let kp: KeyPath<String> = KeyPath::new("hello.smriti.hometown").unwrap();
+        let hometown = my_json.value_at_path2(kp.as_slice()).unwrap();
         assert_eq!(hometown, String::from("nyc"));
     }
 }

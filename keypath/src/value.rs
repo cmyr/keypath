@@ -1,4 +1,3 @@
-
 pub enum Value<'a> {
     Bool(bool),
     U8(u8),
@@ -21,7 +20,7 @@ pub enum Value<'a> {
 
 pub type Error = &'static str;
 
-impl<'a> Value<'a>  {
+impl<'a> Value<'a> {
     pub fn try_as_type<T: TryFromValue<'a> + 'a>(self) -> Result<T, Error> {
         T::try_from_value(self)
     }
@@ -72,7 +71,6 @@ macro_rules! impl_try_from_value {
         }
     };
 }
-
 
 impl_as_value_copy!(bool, Bool);
 impl_as_value_copy!(u8, U8);
