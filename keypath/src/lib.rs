@@ -1,90 +1,182 @@
 #[macro_use]
 extern crate serde_derive;
+use std::any::Any;
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
 //mod lib2;
-mod json_keypath;
-mod lib3;
-mod newstart;
-mod newstart_index;
-mod value;
+//mod json_keypath;
+//mod lib3;
+//mod newstart;
+//mod newstart_index;
+//mod value;
 
-//use serde::de::{Deserialize, IntoDeserializer};
+#[derive(Debug, Clone, Copy)]
+pub enum Field {
+    Ord(usize),
+    Name(&'static str),
+    //Identity,
+}
 
-//trait Keyable<'a>: Deserialize<'a> + IntoDeserializer<'a> {
-//const TYPE: KeyableType;
-//fn value_at_path<Val: Keyable<'a>>(&self, path: KeySlice<Val>) -> Result<&Val, ()> {
-//match (Self::TYPE, path.component()) {
-//(KeyableType::Map, KeyPathComponent::Member(key)) => self.get_keypath_key(key),
-//(KeyableType::List, KeyPathComponent::Index(idx)) => self.get_keypath_index(*idx),
-//(KeyableType::Value, KeyPathComponent::Terminal) => {
-//Val::deserialize(self.into_deserializer())
-//}
-//}
+//pub struct KeyPath<T, const N: usize> {
+//path: [Field; N],
+//_type: PhantomData<T>,
 //}
 
-//fn value_at_path2<Val: Keyable<'a>>(&self, path: KeySlice<Val>) -> Result<&Val, ()> {
-//let mut node: &dyn Keyable = &self;
-//for key in path.components() {
-//node = node.get_child(key);
+//pub struct KeyPath<T> {
+//path: &'static [Field],
+//_type: PhantomData<T>,
+//}
+
+//enum KeyPathError {}
+
+//pub trait Keyable {
+//fn get_item_at_path<T>(&self, path: KeyPath<T>) -> Result<&T, KeyPathError>;
+////fn get_item_as_str(&self)
+//}
+
+struct DemoStruct {
+    friends: Vec<DemoPerson>,
+}
+
+struct DemoPerson {
+    name: String,
+    magnitude: f64,
+}
+
+macro_rules! keyable_leaf {
+    ($name:ty) => {
+        impl RawKeyable for $name {
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+            fn get_field(&self, _ident: &Field) -> Option<&dyn RawKeyable> {
+                None
+            }
+        }
+    };
+}
+
+keyable_leaf!(String);
+keyable_leaf!(f64);
+
+impl<T: RawKeyable> RawKeyable for Vec<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn get_field(&self, ident: &Field) -> Option<&dyn RawKeyable> {
+        match ident {
+            Field::Ord(idx) => self.get(*idx).map(|t| t as &dyn RawKeyable),
+            _ => None,
+        }
+    }
+
+    //fn item_at_path<T>(&self, path: &SimplePath<T>) -> Option<&T> {
+    //self._keypath_get_value(path.name)
+    //.and_then(<dyn Any>::downcast_ref)
+    //}
+}
+
+trait RawKeyable: 'static {
+    fn as_any(&self) -> &dyn Any;
+    fn get_field(&self, ident: &Field) -> Option<&dyn RawKeyable>;
+}
+
+//trait Keyable: RawKeyable {
+//fn item_at_path<T>(&self, path: &SimplePath<T>) -> Option<&T> {
+////self.get_field(path.name)
+////.and_then(<dyn Any>::downcast_ref)
 //}
 //}
 
-//fn get_child(&self, key: KeyPathComponent<'a>) -> Option<&dyn Keyable> {
-//unimplemented!()
-//}
+impl RawKeyable for DemoPerson {
+    fn get_field(&self, ident: &Field) -> Option<&dyn RawKeyable> {
+        match ident {
+            Field::Name("name") => Some(&self.name),
+            Field::Name("magnitude") => Some(&self.magnitude),
+            _ => None,
+        }
+    }
 
-//fn get_keypath_key<T: Keyable<'a>>(&self, key: &str) -> Result<&T, ()>;
-//fn get_keypath_index<T: Keyable<'a>>(&self, key: usize) -> Result<&T, ()>;
-//}
+    fn as_any(&self) -> &(dyn Any + 'static) {
+        self
+    }
+}
 
-//// impl sketch
-//enum KeyableType {
-//Map,
-//Value,
-//List,
-//}
+impl RawKeyable for DemoStruct {
+    fn get_field(&self, ident: &Field) -> Option<&dyn RawKeyable> {
+        match ident {
+            Field::Name("friends") => Some(&self.friends),
+            _ => None,
+        }
+    }
 
-//enum Key<'a> {
-//Index(usize),
-//Name(&'a str),
-//}
+    fn as_any(&self) -> &(dyn Any + 'static) {
+        self
+    }
+}
 
-//enum KeyPathComponent<'a> {
-//Terminal,
-//Member(&'a str),
-//Index(usize),
-//}
-
-//struct KeyPath<'a, Val> {
-//raw: Cow<'a, str>,
-//els: Vec<KeyPathComponent<'a>>,
-//value: PhantomData<Val>,
-//}
-
-//struct KeySlice<'a, Val> {
-//path: &'a [KeyPathComponent<'a>],
-//value: PhantomData<Val>,
-//}
-
-//impl<'a, Val> KeySlice<'a, Val> {
-//fn components(&self) -> PathComponents<'a> {
-//PathComponents {  }
-//}
-
-//fn component(&self) -> &KeyPathComponent {
-//self.path.first().unwrap()
+//impl DemoPerson {
+//fn item_at_path<T>(&self, path: &SimplePath<T>) -> Option<&T> {
+//self._keypath_get_value(path.name)
+//.and_then(<dyn Any>::downcast_ref)
 //}
 //}
 
-//struct PathComponents<'a> {
+//impl DemoStruct {
+//fn _keypath_get_value(&self, ident: &str) -> Option<&dyn Any> {
+//match ident {
+//"friends" => Some(&self.friends),
+////"magnitude" => Some(&self.magnitude),
+//_ => None,
+//}
+//}
+
+//fn item_at_path<T>(&self, path: &SimplePath<T>) -> Option<&T> {
+//self._keypath_get_value(path.name)
+//.and_then(<dyn Any>::downcast_ref)
+//}
+//}
+
+#[derive(Debug, Clone, Copy)]
+struct SimplePath<T: 'static> {
+    //name: &'static str,
+    fields: &'static [Field],
+    _type: PhantomData<T>,
+}
+
+impl<T: 'static> SimplePath<T> {
+    fn new(fields: &'static [Field]) -> SimplePath<T> {
+        SimplePath {
+            fields,
+            _type: PhantomData,
+        }
+    }
+}
+
+//struct ConcreteKeyPath<Root, Value> {
+//_root: PhantomData<Root>,
 
 //}
 
-//impl<'a> Iterator for PathComponents<'a> {
-//type Item=KeyPathComponent<'a>;
-//fn next(&mut self) -> Option<Self::Item> {
-//None
-//}
-//}
+fn hi() {
+    //let path = keypath!(DemoStruct, .friends[0].name);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn simple_keypath() {
+        let mut person = DemoPerson {
+            name: "Jojobell".to_string(),
+            magnitude: 42.0,
+        };
+        let name_path = SimplePath::<String>::new(&[Field::Name("name")]);
+        assert_eq!(person.item_at_path(&name_path).unwrap(), "Jojobell");
+        person.name = "Colin".into();
+        assert_eq!(person.item_at_path(&name_path).unwrap(), "Colin");
+    }
+}
