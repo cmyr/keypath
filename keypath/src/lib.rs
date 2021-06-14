@@ -33,14 +33,29 @@ pub enum Field {
 
 trait RawKeyable: 'static {
     fn as_any(&self) -> &dyn Any;
-    fn get_field(&self, ident: &[Field]) -> Option<&dyn RawKeyable>;
+    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError>;
 }
 
 trait Keyable: RawKeyable {
     fn item_at_path<T>(&self, path: &SimplePath<T>) -> Option<&T> {
         self.get_field(path.fields)
+            .ok()
             .and_then(|t| t.as_any().downcast_ref())
     }
+}
+
+#[derive(Debug, Clone)]
+enum FieldErrorKind {
+    IndexOutOfRange(usize),
+    InvalidField(Field),
+}
+
+#[derive(Debug, Clone)]
+pub struct FieldError {
+    kind: FieldErrorKind,
+    type_name: &'static str,
+    // the number of *remaining* fields at which the error occured
+    depth: usize,
 }
 
 macro_rules! keyable_leaf {
@@ -50,11 +65,14 @@ macro_rules! keyable_leaf {
                 self
             }
 
-            fn get_field(&self, ident: &[Field]) -> Option<&dyn RawKeyable> {
-                if ident.is_empty() {
-                    Some(self)
-                } else {
-                    None
+            fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
+                match ident.split_first() {
+                    None => Ok(self),
+                    Some((head, rest)) => Err(FieldError {
+                        kind: FieldErrorKind::InvalidField(head.to_owned()),
+                        type_name: std::any::type_name::<Self>(),
+                        depth: rest.len(),
+                    }),
                 }
             }
         }
@@ -69,11 +87,22 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
         self
     }
 
-    fn get_field(&self, ident: &[Field]) -> Option<&dyn RawKeyable> {
+    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
         match ident.split_first() {
-            None => Some(self),
-            Some((Field::Ord(idx), rest)) => self.get(*idx).and_then(|t| t.get_field(rest)),
-            _ => None,
+            None => Ok(self),
+            Some((Field::Ord(idx), rest)) => self
+                .get(*idx)
+                .ok_or_else(|| FieldError {
+                    kind: FieldErrorKind::IndexOutOfRange(*idx),
+                    type_name: std::any::type_name::<Self>(),
+                    depth: rest.len(),
+                })
+                .and_then(|t| t.get_field(rest)),
+            Some((field, rest)) => Err(FieldError {
+                kind: FieldErrorKind::InvalidField(field.clone()),
+                type_name: std::any::type_name::<Self>(),
+                depth: rest.len(),
+            }),
         }
     }
 }
@@ -88,13 +117,16 @@ struct DemoPerson {
 }
 
 impl RawKeyable for DemoPerson {
-    fn get_field(&self, ident: &[Field]) -> Option<&dyn RawKeyable> {
-        //let head, rest = ident.split_first
+    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
         match ident.split_first() {
-            None => Some(self),
+            None => Ok(self),
             Some((Field::Name("name"), rest)) => self.name.get_field(rest),
             Some((Field::Name("magnitude"), rest)) => self.magnitude.get_field(rest),
-            _ => None,
+            Some((field, rest)) => Err(FieldError {
+                kind: FieldErrorKind::InvalidField(field.clone()),
+                type_name: std::any::type_name::<Self>(),
+                depth: rest.len(),
+            }),
         }
     }
 
@@ -106,11 +138,15 @@ impl RawKeyable for DemoPerson {
 impl Keyable for DemoPerson {}
 
 impl RawKeyable for DemoStruct {
-    fn get_field(&self, ident: &[Field]) -> Option<&dyn RawKeyable> {
+    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
         match ident.split_first() {
-            None => Some(self),
+            None => Ok(self),
             Some((Field::Name("friends"), rest)) => self.friends.get_field(rest),
-            _ => None,
+            Some((field, rest)) => Err(FieldError {
+                kind: FieldErrorKind::InvalidField(field.clone()),
+                type_name: std::any::type_name::<Self>(),
+                depth: rest.len(),
+            }),
         }
     }
 
