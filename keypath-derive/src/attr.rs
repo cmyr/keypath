@@ -96,6 +96,12 @@ impl<Attrs> Field<Attrs> {
         }
     }
 
+    pub fn match_arms(&self, method_tokens: TokenStream) -> TokenStream {
+        let field = self.ident_tokens();
+        let variant = self.match_variant();
+        quote!(Some((#variant, rest)) => self.#field.#method_tokens(rest),)
+    }
+
     pub fn match_variant(&self) -> TokenStream {
         match &self.ident {
             FieldIdent::Named(s) => quote!(::keypath::Field::Name(#s)),

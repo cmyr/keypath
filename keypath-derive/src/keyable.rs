@@ -44,15 +44,11 @@ fn derive_struct(
     let (_, ty_generics, where_clause) = &input.generics.split_for_impl();
 
     let fields = Fields::<RawKeyableAttrs>::parse_ast(&s.fields)?;
-    let idents = fields.iter().map(Field::ident_tokens);
-    let matches = fields.iter().map(Field::match_variant);
-    let get_match_arms = quote!( #( Some((#matches, rest)) => self.#idents.get_field(rest) ),*);
 
-    let idents = fields.iter().map(Field::ident_tokens);
-    let matches = fields.iter().map(Field::match_variant);
-    let get_mut_match_arms =
-        quote!( #( Some((#matches, rest)) => self.#idents.get_field_mut(rest) ),*);
-
+    let get_field_arms = fields.iter().map(|fld| fld.match_arms(quote!(get_field)));
+    let get_mut_field_arms = fields
+        .iter()
+        .map(|fld| fld.match_arms(quote!(get_field_mut)));
     let res = quote! {
         impl<#impl_generics> ::keypath::RawKeyable for #ident #ty_generics #where_clause {
             fn as_any(&self) -> &dyn ::std::any::Any {
@@ -66,7 +62,7 @@ fn derive_struct(
             fn get_field(&self, ident: &[::keypath::Field]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
-                #get_match_arms,
+                 #( #get_field_arms )*
                     Some((field, rest)) => Err(
                         ::keypath::FieldErrorKind::InvalidField(field.clone()).into_error(self, rest.len())
                     ),
@@ -77,7 +73,7 @@ fn derive_struct(
             fn get_field_mut(&mut self, ident: &[::keypath::Field]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
-                #get_mut_match_arms,
+                #( #get_mut_field_arms )*
                     Some((field, rest)) => Err(
                         ::keypath::FieldErrorKind::InvalidField(field.clone()).into_error(self, rest.len())
                     ),
