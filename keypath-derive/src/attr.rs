@@ -98,7 +98,7 @@ impl<Attrs> Field<Attrs> {
 
     pub fn match_variant(&self) -> TokenStream {
         match &self.ident {
-            FieldIdent::Named(s) => quote!(::keypath::Field::Named(#s)),
+            FieldIdent::Named(s) => quote!(::keypath::Field::Name(#s)),
             FieldIdent::Unnamed(idx) => quote!(::keypath::Field::Ord(#idx)),
         }
     }

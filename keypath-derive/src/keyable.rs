@@ -17,7 +17,7 @@
 use crate::attr::{Field, Fields, RawKeyableAttrs};
 
 use quote::{quote, quote_spanned};
-use syn::{spanned::Spanned, Data, DataEnum, DataStruct};
+use syn::{spanned::Spanned, Data, DataStruct};
 
 pub(crate) fn derive_keyable_impl(
     input: syn::DeriveInput,
@@ -67,11 +67,9 @@ fn derive_struct(
                 match ident.split_first() {
                 None => Ok(self),
                 #get_match_arms,
-                    Some((field, rest)) => Err(::keypath::FieldError {
-                        kind: ::keypath::FieldErrorKind::InvalidField(field.clone()),
-                        type_name: std::any::type_name::<Self>(),
-                        depth: rest.len(),
-                    }),
+                    Some((field, rest)) => Err(
+                        ::keypath::FieldErrorKind::InvalidField(field.clone()).into_error(self, rest.len())
+                    ),
 
                 }
             }
@@ -80,11 +78,9 @@ fn derive_struct(
                 match ident.split_first() {
                 None => Ok(self),
                 #get_mut_match_arms,
-                    Some((field, rest)) => Err(::keypath::FieldError {
-                        kind: ::keypath::FieldErrorKind::InvalidField(field.clone()),
-                        type_name: std::any::type_name::<Self>(),
-                        depth: rest.len(),
-                    }),
+                    Some((field, rest)) => Err(
+                        ::keypath::FieldErrorKind::InvalidField(field.clone()).into_error(self, rest.len())
+                    ),
 
             }
         }
@@ -92,7 +88,7 @@ fn derive_struct(
 
         impl<#impl_generics> ::keypath::Keyable for #ident #ty_generics #where_clause {}
     };
-    eprintln!("TOKENS: {}", res);
+    //eprintln!("TOKENS: {}", res);
     Ok(res)
 }
 

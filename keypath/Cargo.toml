@@ -3,6 +3,9 @@ name = "keypath"
 version = "0.1.0"
 authors = ["Colin Rofls <colin@cmyr.net>"]
 edition = "2018"
+license = "Apache-2.0"
+description = "Access members via nested keypaths"
+repository = "https://github.com/cmyr/keypath"
 
 [dependencies]
 keypath-derive = { version = "0.1.0", path = "../keypath-derive" }

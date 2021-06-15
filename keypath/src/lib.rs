@@ -1,13 +1,8 @@
+mod impls;
+
 pub use keypath_derive::Keyable;
 use std::any::Any;
 use std::marker::PhantomData;
-
-//mod lib2;
-//mod json_keypath;
-//mod lib3;
-//mod newstart;
-//mod newstart_index;
-//mod value;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SimplePath<T: 'static> {
@@ -16,7 +11,7 @@ pub struct SimplePath<T: 'static> {
 }
 
 impl<T: 'static> SimplePath<T> {
-    fn new(fields: &'static [Field]) -> SimplePath<T> {
+    pub fn new(fields: &'static [Field]) -> SimplePath<T> {
         SimplePath {
             fields,
             _type: PhantomData,
@@ -69,217 +64,12 @@ pub struct FieldError {
     depth: usize,
 }
 
-macro_rules! keyable_leaf {
-    ($name:ty) => {
-        impl RawKeyable for $name {
-            fn as_any(&self) -> &dyn Any {
-                self
-            }
-
-            fn as_any_mut(&mut self) -> &mut dyn Any {
-                self
-            }
-
-            fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
-                match ident.split_first() {
-                    None => Ok(self),
-                    Some((head, rest)) => Err(FieldError {
-                        kind: FieldErrorKind::InvalidField(head.to_owned()),
-                        type_name: std::any::type_name::<Self>(),
-                        depth: rest.len(),
-                    }),
-                }
-            }
-
-            fn get_field_mut(
-                &mut self,
-                ident: &[Field],
-            ) -> Result<&mut dyn RawKeyable, FieldError> {
-                match ident.split_first() {
-                    None => Ok(self),
-                    Some((head, rest)) => Err(FieldError {
-                        kind: FieldErrorKind::InvalidField(head.to_owned()),
-                        type_name: std::any::type_name::<Self>(),
-                        depth: rest.len(),
-                    }),
-                }
-            }
+impl FieldErrorKind {
+    pub fn into_error<T>(self, _source: &T, depth: usize) -> FieldError {
+        FieldError {
+            kind: self,
+            type_name: std::any::type_name::<T>(),
+            depth,
         }
-    };
-}
-
-keyable_leaf!(String);
-keyable_leaf!(f64);
-
-impl<T: RawKeyable> RawKeyable for Vec<T> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Ord(idx), rest)) => self
-                .get(*idx)
-                .ok_or_else(|| FieldError {
-                    kind: FieldErrorKind::IndexOutOfRange(*idx),
-                    type_name: std::any::type_name::<Self>(),
-                    depth: rest.len(),
-                })
-                .and_then(|t| t.get_field(rest)),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-
-    fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Ord(idx), rest)) => self
-                .get_mut(*idx)
-                .ok_or_else(|| FieldError {
-                    kind: FieldErrorKind::IndexOutOfRange(*idx),
-                    type_name: std::any::type_name::<Self>(),
-                    depth: rest.len(),
-                })
-                .and_then(|t| t.get_field_mut(rest)),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-}
-
-struct DemoStruct {
-    friends: Vec<DemoPerson>,
-}
-
-//#[derive(Keyable)]
-struct DemoPerson {
-    name: String,
-    magnitude: f64,
-}
-
-impl RawKeyable for DemoPerson {
-    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Name("name"), rest)) => self.name.get_field(rest),
-            Some((Field::Name("magnitude"), rest)) => self.magnitude.get_field(rest),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-
-    fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Name("name"), rest)) => self.name.get_field_mut(rest),
-            Some((Field::Name("magnitude"), rest)) => self.magnitude.get_field_mut(rest),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn as_any(&self) -> &(dyn Any + 'static) {
-        self
-    }
-}
-
-impl Keyable for DemoPerson {}
-
-impl RawKeyable for DemoStruct {
-    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Name("friends"), rest)) => self.friends.get_field(rest),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-
-    fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError> {
-        match ident.split_first() {
-            None => Ok(self),
-            Some((Field::Name("friends"), rest)) => self.friends.get_field_mut(rest),
-            Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
-                type_name: std::any::type_name::<Self>(),
-                depth: rest.len(),
-            }),
-        }
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn as_any(&self) -> &(dyn Any + 'static) {
-        self
-    }
-}
-
-impl Keyable for DemoStruct {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn simple_keypath() {
-        let mut person = DemoPerson {
-            name: "Jojobell".to_string(),
-            magnitude: 42.0,
-        };
-        let name_path = SimplePath::<String>::new(&[Field::Name("name")]);
-        assert_eq!(person.item_at_path(&name_path).unwrap(), "Jojobell");
-        person.name = "Colin".into();
-        assert_eq!(person.item_at_path(&name_path).unwrap(), "Colin");
-    }
-
-    #[test]
-    fn nested_keypath() {
-        let person = DemoPerson {
-            name: "coco".to_string(),
-            magnitude: 42.0,
-        };
-
-        let person1 = DemoPerson {
-            name: "jojo".to_string(),
-            magnitude: 69.0,
-        };
-
-        let mut demo = DemoStruct {
-            friends: vec![person, person1],
-        };
-
-        let jojo_name: SimplePath<String> =
-            SimplePath::new(&[Field::Name("friends"), Field::Ord(1), Field::Name("name")]);
-
-        assert_eq!(demo.item_at_path(&jojo_name).unwrap(), "jojo");
-        demo.set_item_at_path(&jojo_name, "Brad".into()).unwrap();
-        assert_eq!(demo.item_at_path(&jojo_name).unwrap(), "Brad");
-        assert_eq!(demo.friends[1].name, "Brad");
     }
 }
