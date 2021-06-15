@@ -1,3 +1,4 @@
+pub use keypath_derive::Keyable;
 use std::any::Any;
 use std::marker::PhantomData;
 
@@ -9,7 +10,7 @@ use std::marker::PhantomData;
 //mod value;
 
 #[derive(Debug, Clone, Copy)]
-struct SimplePath<T: 'static> {
+pub struct SimplePath<T: 'static> {
     fields: &'static [Field],
     _type: PhantomData<T>,
 }
@@ -29,14 +30,14 @@ pub enum Field {
     Name(&'static str),
 }
 
-trait RawKeyable: 'static {
+pub trait RawKeyable: 'static {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
     fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError>;
     fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError>;
 }
 
-trait Keyable: RawKeyable {
+pub trait Keyable: RawKeyable {
     fn item_at_path<T>(&self, path: &SimplePath<T>) -> Result<&T, FieldError> {
         self.get_field(path.fields)
             //.ok()
@@ -55,7 +56,7 @@ trait Keyable: RawKeyable {
 }
 
 #[derive(Debug, Clone)]
-enum FieldErrorKind {
+pub enum FieldErrorKind {
     IndexOutOfRange(usize),
     InvalidField(Field),
 }
@@ -161,6 +162,7 @@ struct DemoStruct {
     friends: Vec<DemoPerson>,
 }
 
+//#[derive(Keyable)]
 struct DemoPerson {
     name: String,
     magnitude: f64,
