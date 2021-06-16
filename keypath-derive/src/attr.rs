@@ -81,7 +81,7 @@ impl FieldIdent {
     pub fn validation_fn_name(&self) -> TokenStream {
         let validation_name = match self {
             FieldIdent::Named(s) => s.clone(),
-            FieldIdent::Unnamed(idx) => idx.to_string(),
+            FieldIdent::Unnamed(idx) => format!("_{}", idx),
         };
         //let ident = format!("{}{}", VALIDATE_PREFIX, validation_name);
         TokenTree::Ident(Ident::new(&validation_name, Span::call_site())).into()

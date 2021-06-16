@@ -14,38 +14,29 @@ pub(crate) fn keypath_impl(input: TokenStream) -> Result<TokenStream, SyntaxErro
     let root: TokenStream = TokenTree::Ident(require_ident(&mut iter)?).into();
     let root: proc_macro2::TokenStream = root.into();
     let path_elements = collect_path_elements(&mut iter)?;
-    let element_validators = path_elements
-        .iter()
-        .map(|element| element.element.validation_fn_name());
+    let element_validators = path_elements.iter().map(PathElement::validator_fn_ident);
     let element_fields = path_elements
         .iter()
         .map(|element| element.element.to_field_tokens());
     let tokens = quote!(
         #root::fragment()
         #( .#element_validators() )*.to_key_path_with_root::<#root>(&[#( #element_fields ),*])
-        //let fields = ;
-        //validated_value.to_key_path<#root>(fields)
     );
-    //eprintln!("{}", &tokens);
+    eprintln!("{}", tokens);
     Ok(tokens.into())
-    //quote!()
-    //for token in iter {
-    //eprintln!("{:?}", token);
-    //}
-    //Ok(TokenTree::Ident(root).into())
 }
 
 struct PathElement {
     element: FieldIdent,
-    // use me in errors somehow?
-    #[allow(dead_code)]
     span: Span,
 }
 
-//enum Element {
-//Ord(usize),
-//Field(String),
-//}
+impl PathElement {
+    fn validator_fn_ident(&self) -> proc_macro2::Ident {
+        let ident = self.element.validation_fn_name();
+        proc_macro2::Ident::new(&ident.to_string(), self.span.into())
+    }
+}
 
 pub(crate) struct SyntaxError {
     message: String,
@@ -98,48 +89,86 @@ fn require_ident(iter: &mut TokenIter) -> Result<Ident, SyntaxError> {
     }
 }
 
-fn require_path_component(iter: &mut TokenIter) -> Result<PathElement, SyntaxError> {
+fn try_append_components(
+    iter: &mut TokenIter,
+    elements: &mut Vec<PathElement>,
+) -> Result<(), SyntaxError> {
     let token = next_token(iter)?;
     let span = token.span();
     match &token {
         TokenTree::Literal(lit) => {
-            let element = match litrs::Literal::from(lit.clone()) {
-                litrs::Literal::Integer(int) => int
-                    .value::<usize>()
-                    .map(FieldIdent::Unnamed)
-                    .ok_or_else(|| syntax(token, "indexes must be unsigned integers")),
-                other => Err(syntax(
-                    token,
-                    format!("expected index or field name, found literal '{}'", other),
-                )),
-            }?;
-            Ok(PathElement { element, span })
+            match litrs::Literal::from(lit.clone()) {
+                litrs::Literal::Integer(int) => {
+                    let element = int
+                        .value::<usize>()
+                        .map(FieldIdent::Unnamed)
+                        .ok_or_else(|| syntax(token, "indexes must be unsigned integers"))?;
+                    elements.push(PathElement { element, span });
+                }
+                // a path like "This.hi.0.2" will have "0.2" parsed as a float literal
+                litrs::Literal::Float(float)
+                    if float.type_suffix().is_none() && float.exponent_part().is_empty() =>
+                {
+                    let first = float
+                        .integer_part()
+                        .parse::<usize>()
+                        .map(FieldIdent::Unnamed)
+                        .map_err(|_| syntax(&token, "indexes must be unsigned integers"))?;
+                    let second = float
+                        .fractional_part()
+                        .ok_or_else(|| syntax(&token, "paths should not have trailing periods"))?
+                        .parse::<usize>()
+                        .map(FieldIdent::Unnamed)
+                        .map_err(|_| syntax(token, "indexes must be unsigned integers"))?;
+                    elements.push(PathElement {
+                        element: first,
+                        span,
+                    });
+                    elements.push(PathElement {
+                        element: second,
+                        span,
+                    });
+                }
+                other => {
+                    return Err(syntax(
+                        token,
+                        format!("expected index or field name, found literal '{}'", other),
+                    ))
+                }
+            };
+            Ok(())
         }
-        TokenTree::Ident(ident) => Ok(PathElement {
-            element: FieldIdent::Named(ident.to_string()),
-            span,
-        }),
+        TokenTree::Ident(ident) => {
+            elements.push(PathElement {
+                element: FieldIdent::Named(ident.to_string()),
+                span,
+            });
+            Ok(())
+        }
         other => Err(syntax(other, "expected ident")),
     }
 }
 
-fn next_path_element(iter: &mut TokenIter) -> Result<Option<PathElement>, SyntaxError> {
+/// Ok(true) when more work to do, Ok(false) when done
+fn next_path_element(
+    iter: &mut TokenIter,
+    elements: &mut Vec<PathElement>,
+) -> Result<bool, SyntaxError> {
     match iter.next() {
-        None => return Ok(None),
-        Some(TokenTree::Punct(p)) if p.as_char() == '.' && p.spacing() == Spacing::Alone => p,
+        None => return Ok(false),
+        Some(TokenTree::Punct(p)) if p.as_char() == '.' && p.spacing() == Spacing::Alone => (),
         Some(token) => return Err(syntax(token, "expected '.'")),
     };
 
-    let component = require_path_component(iter)?;
-    Ok(Some(component))
+    try_append_components(iter, elements)?;
+    Ok(true)
 }
 
 fn collect_path_elements(iter: &mut TokenIter) -> Result<Vec<PathElement>, SyntaxError> {
     let mut result = Vec::new();
     loop {
-        match next_path_element(iter)? {
-            Some(element) => result.push(element),
-            None => break Ok(result),
+        if !next_path_element(iter, &mut result)? {
+            return Ok(result)
         }
     }
 }
