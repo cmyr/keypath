@@ -1,7 +1,17 @@
 //! trait impls for std types
 
-use super::{Field, FieldError, FieldErrorKind, RawKeyable};
+use super::{Field, FieldError, FieldErrorKind, KeyPath, RawKeyable, TypedKeyable};
 use std::any::Any;
+
+pub struct Leaf<T> {
+    _type: std::marker::PhantomData<T>,
+}
+
+impl<T> Leaf<T> {
+    pub fn to_key_path_with_root<Root>(self, fields: &'static [Field]) -> KeyPath<Root, T> {
+        KeyPath::__conjure_from_abyss(fields)
+    }
+}
 
 macro_rules! keyable_leaf {
     ($name:ty) => {
@@ -34,6 +44,15 @@ macro_rules! keyable_leaf {
                         Err(FieldErrorKind::InvalidField(head.to_owned())
                             .into_error(self, rest.len()))
                     }
+                }
+            }
+        }
+
+        impl TypedKeyable for $name {
+            type PathFragment = Leaf<$name>;
+            fn fragment() -> Leaf<$name> {
+                Leaf {
+                    _type: std::marker::PhantomData,
                 }
             }
         }

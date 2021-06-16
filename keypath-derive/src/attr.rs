@@ -1,22 +1,11 @@
-// Copyright 2019 The Druid Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 //! parsing helpers
 
 use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
 use quote::quote;
 use syn::Error;
+
+//const FRAGMENT_PREFIX: &str = "__keypath_derived_";
+//const VALIDATE_PREFIX: &str = "__keypath_validate_";
 
 /// The fields for a struct or an enum variant.
 pub struct Fields<Attrs> {
@@ -88,6 +77,24 @@ impl Field<RawKeyableAttrs> {
     }
 }
 
+impl FieldIdent {
+    pub fn validation_fn_name(&self) -> TokenStream {
+        let validation_name = match self {
+            FieldIdent::Named(s) => s.clone(),
+            FieldIdent::Unnamed(idx) => idx.to_string(),
+        };
+        //let ident = format!("{}{}", VALIDATE_PREFIX, validation_name);
+        TokenTree::Ident(Ident::new(&validation_name, Span::call_site())).into()
+    }
+
+    pub fn to_field_tokens(&self) -> TokenStream {
+        match self {
+            FieldIdent::Named(s) => quote!(::keypath::Field::Name(#s)),
+            FieldIdent::Unnamed(idx) => quote!(::keypath::Field::Ord(#idx)),
+        }
+    }
+}
+
 impl<Attrs> Field<Attrs> {
     pub fn ident_tokens(&self) -> TokenTree {
         match self.ident {
@@ -98,11 +105,11 @@ impl<Attrs> Field<Attrs> {
 
     pub fn match_arms(&self, method_tokens: TokenStream) -> TokenStream {
         let field = self.ident_tokens();
-        let variant = self.match_variant();
+        let variant = self.field_variant();
         quote!(Some((#variant, rest)) => self.#field.#method_tokens(rest),)
     }
 
-    pub fn match_variant(&self) -> TokenStream {
+    pub fn field_variant(&self) -> TokenStream {
         match &self.ident {
             FieldIdent::Named(s) => quote!(::keypath::Field::Name(#s)),
             FieldIdent::Unnamed(idx) => quote!(::keypath::Field::Ord(#idx)),
