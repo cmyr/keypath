@@ -14,15 +14,15 @@ pub(crate) fn keypath_impl(input: TokenStream) -> Result<TokenStream, SyntaxErro
     let root: TokenStream = TokenTree::Ident(require_ident(&mut iter)?).into();
     let root: proc_macro2::TokenStream = root.into();
     let path_elements = collect_path_elements(&mut iter)?;
-    let element_validators = path_elements.iter().map(PathElement::validator_fn_ident);
+    let element_validators = path_elements.iter().map(PathElement::traverse_type);
     let element_fields = path_elements.iter().map(PathElement::to_tokens);
     let tokens = quote!(
-        #root::fragment()
-        #( .#element_validators() )*
+        #root::get()
+        #( .#element_validators )*
 
         .to_key_path_with_root::<#root>(&[#( #element_fields ),*])
     );
-    eprintln!("{}", tokens);
+    //eprintln!("{}", tokens);
     Ok(tokens.into())
 }
 
@@ -32,9 +32,10 @@ struct PathElement {
 }
 
 impl PathElement {
-    fn validator_fn_ident(&self) -> proc_macro2::Ident {
-        let ident = self.element.validation_fn_name();
-        proc_macro2::Ident::new(&ident, self.span.into())
+    fn traverse_type(&self) -> proc_macro2::TokenStream {
+        let ident = self.element.to_tokens();
+        let span = self.span.into();
+        quote_spanned!(span=> #ident)
     }
 
     fn to_tokens(&self) -> proc_macro2::TokenStream {

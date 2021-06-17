@@ -88,7 +88,7 @@ pub trait TypedKeyable: RawKeyable + Sized {
     /// names for each Keyable type.
     type PathFragment;
 
-    fn fragment() -> Self::PathFragment;
+    fn get() -> Self::PathFragment;
 
     fn item_at_path<T: 'static>(&self, path: &KeyPath<Self, T>) -> &T {
         self.get_field(path.fields)
@@ -105,6 +105,21 @@ pub trait TypedKeyable: RawKeyable + Sized {
             .as_any_mut()
             .downcast_mut()
             .unwrap() = new;
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PathChecker<T>(PhantomData<*const T>);
+
+impl<T: TypedKeyable> PathChecker<T> {
+    pub fn get(self) -> T::PathFragment {
+        T::get()
+    }
+}
+
+impl<T> Default for PathChecker<T> {
+    fn default() -> Self {
+        PathChecker(PhantomData)
     }
 }
 

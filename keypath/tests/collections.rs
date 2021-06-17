@@ -55,8 +55,8 @@ fn nested_keypath() {
 
 //#[test]
 //fn some_error_meessages_to_improve() {
-    //// dot followed by brace
-    //let jojo_name = keypath!(DemoStruct.["play"][0].name);
-    //// two dots
-    //let jojo_name = keypath!(DemoStruct..["play"][0].name);
+//// dot followed by brace
+//let jojo_name = keypath!(DemoStruct.["play"][0].name);
+//// two dots
+//let jojo_name = keypath!(DemoStruct..["play"][0].name);
 //}

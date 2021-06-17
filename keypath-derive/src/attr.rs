@@ -42,11 +42,41 @@ impl Fields {
 
         Ok(Fields { kind, fields })
     }
-}
 
-impl Fields {
     pub fn iter(&self) -> impl Iterator<Item = &Field> {
         self.fields.iter()
+    }
+
+    pub fn generate_mirror_decls(&self) -> TokenStream {
+        match self.kind {
+            _ if self.fields.is_empty() => TokenStream::new(),
+            FieldKind::Unnamed => {
+                let types = self.fields.iter().map(|f| &f.ty);
+                quote!( #( ::keypath::PathChecker<#types> ),* )
+            }
+            FieldKind::Named => {
+                let names = self.fields.iter().map(Field::field_tokens);
+                let types = self.fields.iter().map(|f| &f.ty);
+                quote!( #( #names: ::keypath::PathChecker<#types> ),* )
+            }
+        }
+    }
+
+    pub fn generate_mirror_inits(&self) -> TokenStream {
+        match self.kind {
+            _ if self.fields.is_empty() => TokenStream::new(),
+            FieldKind::Unnamed => {
+                let fields = self
+                    .fields
+                    .iter()
+                    .map(|_| quote!(::keypath::PathChecker::default()));
+                quote!( #( #fields ),* )
+            }
+            FieldKind::Named => {
+                let names = self.fields.iter().map(Field::field_tokens);
+                quote!( #( #names: ::keypath::PathChecker::default() ),* )
+            }
+        }
     }
 }
 
@@ -71,7 +101,7 @@ impl Field {
 impl Field {
     fn field_tokens(&self) -> TokenTree {
         match self.ident {
-            FieldIdent::Named(ref s) => Ident::new(&s, Span::call_site()).into(),
+            FieldIdent::Named(ref s) => Ident::new(&s, self.span).into(),
             FieldIdent::Unnamed(num) => Literal::usize_unsuffixed(num).into(),
         }
     }

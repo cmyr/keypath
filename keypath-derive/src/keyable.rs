@@ -14,7 +14,7 @@
 
 //! The implementation for #[derive(Data)]
 
-use crate::attr::Fields;
+use crate::attr::{FieldKind, Fields};
 
 use proc_macro2::Ident;
 use quote::{quote, quote_spanned};
@@ -43,7 +43,7 @@ fn derive_struct(
     s: &DataStruct,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let ident = &input.ident;
-    let impl_generics = generics_bounds(&input.generics);
+    let impl_generics = add_generic_bounds(&input.generics, quote!(::keypath::TypedKeyable));
     let (_, ty_generics, where_clause) = &input.generics.split_for_impl();
 
     let fields = Fields::parse_ast(&s.fields)?;
@@ -52,7 +52,7 @@ fn derive_struct(
         .iter()
         .map(|fld| fld.match_arms(quote!(get_field_mut)));
 
-    let (fragment_decl, typed_trait_decl) = path_fragment_struct(ident, &input.generics, &fields)?;
+    let (fragment_decl, typed_trait_decl) = mirror_struct(ident, &input.generics, &fields)?;
     let res = quote! {
         impl<#impl_generics> ::keypath::RawKeyable for #ident #ty_generics #where_clause {
             fn as_any(&self) -> &dyn ::std::any::Any {
@@ -94,72 +94,58 @@ fn derive_struct(
             #typed_trait_decl
         }
     };
-    //eprintln!("TOKENS: {}", res);
     Ok(res)
 }
 
-fn path_fragment_struct(
+fn mirror_struct(
     base_ident: &Ident,
     generics: &syn::Generics,
     fields: &Fields,
 ) -> Result<(proc_macro2::TokenStream, proc_macro2::TokenStream), syn::Error> {
     let (_, ty_generics, _) = generics.split_for_impl();
-    let fragment_type = fragment_ident_for_base_ident(base_ident);
+    let impl_generics = add_generic_bounds(generics, quote!(::keypath::TypedKeyable));
+    let mirror_ident = mirror_ident_for_base_ident(base_ident);
+
+    let field_decls = fields.generate_mirror_decls();
+    let struct_decl = match fields.kind {
+        FieldKind::Named => {
+            quote!(pub struct #mirror_ident #ty_generics{#field_decls})
+        }
+
+        FieldKind::Unnamed => {
+            quote!(pub struct #mirror_ident #ty_generics(#field_decls);)
+        }
+    };
+    let struct_decl = quote!(#[allow(non_camel_case_types)]
+        #struct_decl);
+
     let fragments = fields
         .iter()
         .map(|fld| fld.validation_fn_ident())
         .collect::<Vec<_>>();
     let field_types = fields.iter().map(|fld| &fld.ty).collect::<Vec<_>>();
-    let tokens = quote!(
+    let methods = quote!(
         #(pub fn #fragments(self) -> <#field_types as ::keypath::TypedKeyable>::PathFragment {
-            <#field_types as ::keypath::TypedKeyable>::fragment()
+            <#field_types as ::keypath::TypedKeyable>::get()
         })*
 
         pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
     );
-    fragment_decl_header(&fragment_type, generics, tokens)
-}
 
-fn fragment_decl_header(
-    ident: &Ident,
-    generics: &syn::Generics,
-    methods: proc_macro2::TokenStream,
-) -> Result<(proc_macro2::TokenStream, proc_macro2::TokenStream), syn::Error> {
-    let mut type_params = Vec::new();
-    let mut impl_params = Vec::new();
-    let mut phantom_decls = Vec::new();
-    let mut phantom_inits = Vec::new();
-    for param in generics.params.iter() {
-        match param {
-            syn::GenericParam::Type(syn::TypeParam { ident, .. }) => {
-                type_params.push(quote!(#ident));
-                impl_params.push(quote!(#ident: ::keypath::TypedKeyable));
-                phantom_decls.push(quote!(::std::marker::PhantomData<#ident>));
-                phantom_inits.push(quote!(::std::marker::PhantomData));
-            }
-            syn::GenericParam::Const(param) => {
-                return Err(syn::Error::new(
-                    param.span(),
-                    "Keypaths don't currently support const generics",
-                ))
-            }
-            syn::GenericParam::Lifetime(param) => {
-                return Err(syn::Error::new(
-                    param.span(),
-                    "Keypaths don't currently support lifetime paramaters",
-                ))
-            }
-        }
-    }
+    let struct_field_init = fields.generate_mirror_inits();
+    let struct_init = match fields.kind {
+        FieldKind::Named => quote!(Self {#struct_field_init}),
+        FieldKind::Unnamed => quote!(Self (#struct_field_init)),
+    };
 
     let tokens = quote!(
-        #[allow(non_camel_case_types)]
-        pub struct #ident<#( #type_params ),*>(#( #phantom_inits ),*);
-        impl<#( #type_params ),*> #ident<#( #type_params ),*> {
+        #struct_decl
+
+        impl< #impl_generics> #mirror_ident #ty_generics {
             fn new() -> Self {
-                #ident(#( #phantom_inits ),*)
+                #struct_init
             }
 
             #methods
@@ -167,22 +153,25 @@ fn fragment_decl_header(
     );
 
     let trait_impl = quote!(
-        type PathFragment = #ident<#( #type_params ),*>;
-        fn fragment() -> #ident<#( #type_params ),*> {
-            #ident::new()
+        type PathFragment = #mirror_ident #ty_generics;
+        fn get() -> #mirror_ident #ty_generics{
+            #mirror_ident::new()
         }
     );
     Ok((tokens, trait_impl))
 }
 
-fn fragment_ident_for_base_ident(ident: &Ident) -> Ident {
+fn mirror_ident_for_base_ident(ident: &Ident) -> Ident {
     Ident::new(
         &format!("{}{}", DERIVED_MIRROR_STRUCT_PREFIX, ident),
         ident.span(),
     )
 }
 
-fn generics_bounds(generics: &syn::Generics) -> proc_macro2::TokenStream {
+fn add_generic_bounds(
+    generics: &syn::Generics,
+    with_bounds: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
     let res = generics.params.iter().map(|gp| {
         use syn::GenericParam::*;
         match gp {
@@ -190,9 +179,9 @@ fn generics_bounds(generics: &syn::Generics) -> proc_macro2::TokenStream {
                 let ident = &ty.ident;
                 let bounds = &ty.bounds;
                 if bounds.is_empty() {
-                    quote_spanned!(ty.span()=> #ident : ::keypath::Keyable)
+                    quote_spanned!(ty.span()=> #ident : #with_bounds)
                 } else {
-                    quote_spanned!(ty.span()=> #ident : #bounds + ::keypath::Keyable)
+                    quote_spanned!(ty.span()=> #ident : #bounds + #with_bounds)
                 }
             }
             Lifetime(lf) => quote!(#lf),

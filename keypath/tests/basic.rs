@@ -12,6 +12,7 @@ fn simple_keypath() {
         name: "Jojobell".to_string(),
         magnitude: 42.0,
     };
+
     let name_path = keypath!(DemoPerson.name);
     assert_eq!(person.item_at_path(&name_path), "Jojobell");
     person.name = "Colin".into();

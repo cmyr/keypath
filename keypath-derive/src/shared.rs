@@ -1,3 +1,4 @@
+use proc_macro2::{Ident, Literal, Span};
 use quote::quote;
 
 pub enum PathComponent {
@@ -28,11 +29,28 @@ impl PathComponent {
         }
     }
 
-    pub fn validation_fn_name(&self) -> String {
+    //pub fn validation_fn_name(&self) -> String {
+        //match self {
+            //PathComponent::Field(ident) => ident.validation_fn_name(),
+            //PathComponent::IndexInt(_) => "__keyable_index_int".into(),
+            //PathComponent::IndexStr(_) => "__keyable_index_str".into(),
+        //}
+    //}
+
+    pub fn to_tokens(&self) -> proc_macro2::TokenStream {
         match self {
-            PathComponent::Field(ident) => ident.validation_fn_name(),
-            PathComponent::IndexInt(_) => "__keyable_index_int".into(),
-            PathComponent::IndexStr(_) => "__keyable_index_str".into(),
+            PathComponent::Field(FieldIdent::Named(ident)) => {
+                let ident = Ident::new(&ident, Span::call_site());
+                quote!(#ident.get())
+            }
+            PathComponent::Field(FieldIdent::Unnamed(ident)) => {
+                let lit = Literal::usize_unsuffixed(*ident);
+                quote!(#lit.get())
+            }
+            //PathComponent::IndexInt(idx) => quote!([#idx]),
+            //PathComponent::IndexStr(s) => quote!([#s]),
+            PathComponent::IndexInt(_) => quote!(__keyable_index_int()),
+            PathComponent::IndexStr(_) => quote!(__keyable_index_str()),
         }
     }
 }

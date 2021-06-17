@@ -52,7 +52,7 @@ macro_rules! keyable_leaf {
 
         impl TypedKeyable for $name {
             type PathFragment = Leaf<$name>;
-            fn fragment() -> Leaf<$name> {
+            fn get() -> Leaf<$name> {
                 Leaf {
                     _type: std::marker::PhantomData,
                 }
@@ -136,7 +136,7 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
 impl<T: TypedKeyable> TypedKeyable for Vec<T> {
     type PathFragment = VecMirror<T>;
 
-    fn fragment() -> Self::PathFragment {
+    fn get() -> Self::PathFragment {
         VecMirror(std::marker::PhantomData)
     }
 }
@@ -145,7 +145,7 @@ pub struct VecMirror<T>(std::marker::PhantomData<T>);
 
 impl<T: TypedKeyable> VecMirror<T> {
     pub fn __keyable_index_int(self) -> <T as TypedKeyable>::PathFragment {
-        <T as TypedKeyable>::fragment()
+        <T as TypedKeyable>::get()
     }
 }
 
@@ -210,7 +210,7 @@ where
 {
     type PathFragment = HashMapMirror<K, T>;
 
-    fn fragment() -> Self::PathFragment {
+    fn get() -> Self::PathFragment {
         HashMapMirror(std::marker::PhantomData, std::marker::PhantomData)
     }
 }
@@ -219,6 +219,6 @@ pub struct HashMapMirror<K, T>(std::marker::PhantomData<K>, std::marker::Phantom
 
 impl<K, T: TypedKeyable> HashMapMirror<K, T> {
     pub fn __keyable_index_str(self) -> <T as TypedKeyable>::PathFragment {
-        <T as TypedKeyable>::fragment()
+        <T as TypedKeyable>::get()
     }
 }
