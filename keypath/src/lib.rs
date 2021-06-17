@@ -8,12 +8,12 @@ use std::marker::PhantomData;
 /// A failable typed keypath.
 #[derive(Debug, Clone, Copy)]
 pub struct SimplePath<T: 'static> {
-    fields: &'static [Field],
+    fields: &'static [PathComponent],
     _type: PhantomData<T>,
 }
 
 impl<T: 'static> SimplePath<T> {
-    pub fn new(fields: &'static [Field]) -> SimplePath<T> {
+    pub fn new(fields: &'static [PathComponent]) -> SimplePath<T> {
         SimplePath {
             fields,
             _type: PhantomData,
@@ -23,7 +23,7 @@ impl<T: 'static> SimplePath<T> {
 
 /// A non-fallible keypath.
 pub struct KeyPath<Root, Value> {
-    fields: &'static [Field],
+    fields: &'static [PathComponent],
     _root: PhantomData<Root>,
     _value: PhantomData<Value>,
 }
@@ -35,7 +35,7 @@ impl<Root, Value> KeyPath<Root, Value> {
     /// to be called after a path has been type-checked, presumably in the
     /// context of a proc_macro.
     #[doc(hidden)]
-    pub fn __conjure_from_abyss(fields: &'static [Field]) -> Self {
+    pub fn __conjure_from_abyss(fields: &'static [PathComponent]) -> Self {
         KeyPath {
             fields,
             _root: PhantomData,
@@ -46,17 +46,20 @@ impl<Root, Value> KeyPath<Root, Value> {
 
 /// A component of a keypath.
 #[derive(Debug, Clone, Copy)]
-pub enum Field {
-    Ord(usize),
-    Name(&'static str),
+pub enum PathComponent {
+    Unnamed(usize),
+    Named(&'static str),
+    IndexInt(usize),
+    IndexStr(&'static str),
 }
 
 /// A trait for types that expose their properties via keypath.
 pub trait RawKeyable: 'static {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError>;
-    fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError>;
+    fn get_field(&self, ident: &[PathComponent]) -> Result<&dyn RawKeyable, FieldError>;
+    fn get_field_mut(&mut self, ident: &[PathComponent])
+        -> Result<&mut dyn RawKeyable, FieldError>;
 }
 
 //TODO: obsolete? not obsolete? replace with TypedKeyable? combine them?
@@ -108,7 +111,7 @@ pub trait TypedKeyable: RawKeyable + Sized {
 #[derive(Debug, Clone)]
 pub enum FieldErrorKind {
     IndexOutOfRange(usize),
-    InvalidField(Field),
+    InvalidField(PathComponent),
 }
 
 #[derive(Debug, Clone)]

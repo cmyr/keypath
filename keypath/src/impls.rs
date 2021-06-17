@@ -1,6 +1,6 @@
 //! trait impls for std types
 
-use super::{Field, FieldError, FieldErrorKind, KeyPath, RawKeyable, TypedKeyable};
+use super::{FieldError, FieldErrorKind, KeyPath, PathComponent, RawKeyable, TypedKeyable};
 use std::any::Any;
 
 pub struct Leaf<T> {
@@ -8,7 +8,7 @@ pub struct Leaf<T> {
 }
 
 impl<T> Leaf<T> {
-    pub fn to_key_path_with_root<Root>(self, fields: &'static [Field]) -> KeyPath<Root, T> {
+    pub fn to_key_path_with_root<Root>(self, fields: &'static [PathComponent]) -> KeyPath<Root, T> {
         KeyPath::__conjure_from_abyss(fields)
     }
 }
@@ -24,7 +24,7 @@ macro_rules! keyable_leaf {
                 self
             }
 
-            fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
+            fn get_field(&self, ident: &[PathComponent]) -> Result<&dyn RawKeyable, FieldError> {
                 match ident.split_first() {
                     None => Ok(self),
                     Some((head, rest)) => {
@@ -36,7 +36,7 @@ macro_rules! keyable_leaf {
 
             fn get_field_mut(
                 &mut self,
-                ident: &[Field],
+                ident: &[PathComponent],
             ) -> Result<&mut dyn RawKeyable, FieldError> {
                 match ident.split_first() {
                     None => Ok(self),
@@ -89,10 +89,10 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
         self
     }
 
-    fn get_field(&self, ident: &[Field]) -> Result<&dyn RawKeyable, FieldError> {
+    fn get_field(&self, ident: &[PathComponent]) -> Result<&dyn RawKeyable, FieldError> {
         match ident.split_first() {
             None => Ok(self),
-            Some((Field::Ord(idx), rest)) => self
+            Some((PathComponent::IndexInt(idx), rest)) => self
                 .get(*idx)
                 .ok_or_else(|| FieldError {
                     kind: FieldErrorKind::IndexOutOfRange(*idx),
@@ -101,17 +101,20 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
                 })
                 .and_then(|t| t.get_field(rest)),
             Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
+                kind: FieldErrorKind::InvalidField(*field),
                 type_name: std::any::type_name::<Self>(),
                 depth: rest.len(),
             }),
         }
     }
 
-    fn get_field_mut(&mut self, ident: &[Field]) -> Result<&mut dyn RawKeyable, FieldError> {
+    fn get_field_mut(
+        &mut self,
+        ident: &[PathComponent],
+    ) -> Result<&mut dyn RawKeyable, FieldError> {
         match ident.split_first() {
             None => Ok(self),
-            Some((Field::Ord(idx), rest)) => self
+            Some((PathComponent::IndexInt(idx), rest)) => self
                 .get_mut(*idx)
                 .ok_or_else(|| FieldError {
                     kind: FieldErrorKind::IndexOutOfRange(*idx),
@@ -120,10 +123,26 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
                 })
                 .and_then(|t| t.get_field_mut(rest)),
             Some((field, rest)) => Err(FieldError {
-                kind: FieldErrorKind::InvalidField(field.clone()),
+                kind: FieldErrorKind::InvalidField(*field),
                 type_name: std::any::type_name::<Self>(),
                 depth: rest.len(),
             }),
         }
+    }
+}
+
+impl<T: TypedKeyable> TypedKeyable for Vec<T> {
+    type PathFragment = VecMirror<T>;
+
+    fn fragment() -> Self::PathFragment {
+        VecMirror(std::marker::PhantomData)
+    }
+}
+
+pub struct VecMirror<T>(std::marker::PhantomData<T>);
+
+impl<T: TypedKeyable> VecMirror<T> {
+    pub fn __keyable_index_int(self) -> <T as TypedKeyable>::PathFragment {
+        <T as TypedKeyable>::fragment()
     }
 }

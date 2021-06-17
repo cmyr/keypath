@@ -4,37 +4,43 @@ use std::iter::FromIterator;
 
 use proc_macro::token_stream::IntoIter as TokenIter;
 use proc_macro::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
-use quote::quote;
+use quote::{quote, quote_spanned};
 
-use super::attr::FieldIdent;
+use super::shared::PathComponent;
 
 pub(crate) fn keypath_impl(input: TokenStream) -> Result<TokenStream, SyntaxError> {
-    //eprintln!("{}", input);
+    //eprintln!("{:?}", input);
     let mut iter = input.into_iter();
     let root: TokenStream = TokenTree::Ident(require_ident(&mut iter)?).into();
     let root: proc_macro2::TokenStream = root.into();
     let path_elements = collect_path_elements(&mut iter)?;
     let element_validators = path_elements.iter().map(PathElement::validator_fn_ident);
-    let element_fields = path_elements
-        .iter()
-        .map(|element| element.element.to_field_tokens());
+    let element_fields = path_elements.iter().map(PathElement::to_tokens);
     let tokens = quote!(
         #root::fragment()
-        #( .#element_validators() )*.to_key_path_with_root::<#root>(&[#( #element_fields ),*])
+        #( .#element_validators() )*
+
+        .to_key_path_with_root::<#root>(&[#( #element_fields ),*])
     );
     eprintln!("{}", tokens);
     Ok(tokens.into())
 }
 
 struct PathElement {
-    element: FieldIdent,
+    element: PathComponent,
     span: Span,
 }
 
 impl PathElement {
     fn validator_fn_ident(&self) -> proc_macro2::Ident {
         let ident = self.element.validation_fn_name();
-        proc_macro2::Ident::new(&ident.to_string(), self.span.into())
+        proc_macro2::Ident::new(&ident, self.span.into())
+    }
+
+    fn to_tokens(&self) -> proc_macro2::TokenStream {
+        let tokens = self.element.path_component_tokens();
+        let span = self.span.into();
+        quote_spanned!(span=> #tokens)
     }
 }
 
@@ -101,7 +107,7 @@ fn try_append_components(
                 litrs::Literal::Integer(int) => {
                     let element = int
                         .value::<usize>()
-                        .map(FieldIdent::Unnamed)
+                        .map(PathComponent::unnamed)
                         .ok_or_else(|| syntax(token, "indexes must be unsigned integers"))?;
                     elements.push(PathElement { element, span });
                 }
@@ -112,13 +118,13 @@ fn try_append_components(
                     let first = float
                         .integer_part()
                         .parse::<usize>()
-                        .map(FieldIdent::Unnamed)
+                        .map(PathComponent::unnamed)
                         .map_err(|_| syntax(&token, "indexes must be unsigned integers"))?;
                     let second = float
                         .fractional_part()
                         .ok_or_else(|| syntax(&token, "paths should not have trailing periods"))?
                         .parse::<usize>()
-                        .map(FieldIdent::Unnamed)
+                        .map(PathComponent::unnamed)
                         .map_err(|_| syntax(token, "indexes must be unsigned integers"))?;
                     elements.push(PathElement {
                         element: first,
@@ -140,13 +146,47 @@ fn try_append_components(
         }
         TokenTree::Ident(ident) => {
             elements.push(PathElement {
-                element: FieldIdent::Named(ident.to_string()),
+                element: PathComponent::named(ident.to_string()),
                 span,
             });
             Ok(())
         }
         other => Err(syntax(other, "expected ident")),
     }
+}
+
+fn parse_index(group: &Group) -> Result<PathElement, SyntaxError> {
+    let mut group_tokens = group.stream().into_iter();
+    //let lit = require_literal(&mut group_tokens)?;
+    let token = next_token(&mut group_tokens)?;
+    if let Some(token) = group_tokens.next() {
+        return Err(syntax(token, "braces can only contain a single literal"));
+    }
+    let literal = match token.clone() {
+        TokenTree::Literal(lit) => lit,
+        _ => {
+            return Err(syntax(
+                &token,
+                "keypath indexes must be string or integer literals",
+            ))
+        }
+    };
+
+    match litrs::Literal::from(literal) {
+        litrs::Literal::Integer(int) => int
+            .value::<usize>()
+            .map(PathComponent::IndexInt)
+            .ok_or_else(|| syntax(&token, "indexes must be unsigned integers")),
+        litrs::Literal::String(s) => Ok(PathComponent::IndexStr(s.into_value().into_owned())),
+        _ => Err(syntax(
+            &token,
+            "indexes may only be unsigned integers or strings",
+        )),
+    }
+    .map(|element| PathElement {
+        element,
+        span: token.span(),
+    })
 }
 
 /// Ok(true) when more work to do, Ok(false) when done
@@ -156,11 +196,20 @@ fn next_path_element(
 ) -> Result<bool, SyntaxError> {
     match iter.next() {
         None => return Ok(false),
-        Some(TokenTree::Punct(p)) if p.as_char() == '.' && p.spacing() == Spacing::Alone => (),
-        Some(token) => return Err(syntax(token, "expected '.'")),
+        Some(TokenTree::Punct(p)) if p.as_char() == '.' && p.spacing() == Spacing::Alone => {
+            try_append_components(iter, elements)?;
+        }
+        Some(TokenTree::Group(g)) if matches!(g.delimiter(), Delimiter::Bracket) => {
+            let element = parse_index(&g)?;
+            elements.push(element);
+        }
+        Some(token) => {
+            eprintln!("BAD TOKEN {:?}", token);
+            return Err(syntax(token, "expected '.' or '['"));
+        }
     };
 
-    try_append_components(iter, elements)?;
+    //try_append_components(iter, elements)?;
     Ok(true)
 }
 
@@ -168,7 +217,7 @@ fn collect_path_elements(iter: &mut TokenIter) -> Result<Vec<PathElement>, Synta
     let mut result = Vec::new();
     loop {
         if !next_path_element(iter, &mut result)? {
-            return Ok(result)
+            return Ok(result);
         }
     }
 }

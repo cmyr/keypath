@@ -14,7 +14,7 @@
 
 //! The implementation for #[derive(Data)]
 
-use crate::attr::{Fields, RawKeyableAttrs};
+use crate::attr::Fields;
 
 use proc_macro2::Ident;
 use quote::{quote, quote_spanned};
@@ -46,7 +46,7 @@ fn derive_struct(
     let impl_generics = generics_bounds(&input.generics);
     let (_, ty_generics, where_clause) = &input.generics.split_for_impl();
 
-    let fields = Fields::<RawKeyableAttrs>::parse_ast(&s.fields)?;
+    let fields = Fields::parse_ast(&s.fields)?;
     let get_field_arms = fields.iter().map(|fld| fld.match_arms(quote!(get_field)));
     let get_mut_field_arms = fields
         .iter()
@@ -63,7 +63,7 @@ fn derive_struct(
                 self
             }
 
-            fn get_field(&self, ident: &[::keypath::Field]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field(&self, ident: &[::keypath::PathComponent]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                  #( #get_field_arms )*
@@ -74,7 +74,7 @@ fn derive_struct(
                 }
             }
 
-            fn get_field_mut(&mut self, ident: &[::keypath::Field]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field_mut(&mut self, ident: &[::keypath::PathComponent]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                 #( #get_mut_field_arms )*
@@ -101,13 +101,13 @@ fn derive_struct(
 fn path_fragment_struct(
     base_ident: &Ident,
     generics: &syn::Generics,
-    fields: &Fields<RawKeyableAttrs>,
+    fields: &Fields,
 ) -> Result<(proc_macro2::TokenStream, proc_macro2::TokenStream), syn::Error> {
     let (_, ty_generics, _) = generics.split_for_impl();
     let fragment_type = fragment_ident_for_base_ident(base_ident);
     let fragments = fields
         .iter()
-        .map(|fld| fld.ident.validation_fn_name())
+        .map(|fld| fld.validation_fn_ident())
         .collect::<Vec<_>>();
     let field_types = fields.iter().map(|fld| &fld.ty).collect::<Vec<_>>();
     let tokens = quote!(
@@ -115,7 +115,7 @@ fn path_fragment_struct(
             <#field_types as ::keypath::TypedKeyable>::fragment()
         })*
 
-        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::Field]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
     );
