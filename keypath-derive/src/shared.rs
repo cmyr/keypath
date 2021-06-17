@@ -1,5 +1,5 @@
 use proc_macro2::{Ident, Literal, Span};
-use quote::quote;
+use quote::{quote, quote_spanned};
 
 pub enum PathComponent {
     Field(FieldIdent),
@@ -29,28 +29,20 @@ impl PathComponent {
         }
     }
 
-    //pub fn validation_fn_name(&self) -> String {
-        //match self {
-            //PathComponent::Field(ident) => ident.validation_fn_name(),
-            //PathComponent::IndexInt(_) => "__keyable_index_int".into(),
-            //PathComponent::IndexStr(_) => "__keyable_index_str".into(),
-        //}
-    //}
-
-    pub fn to_tokens(&self) -> proc_macro2::TokenStream {
+    pub fn to_tokens(&self, span: proc_macro2::Span) -> proc_macro2::TokenStream {
         match self {
             PathComponent::Field(FieldIdent::Named(ident)) => {
                 let ident = Ident::new(&ident, Span::call_site());
-                quote!(#ident.get())
+                quote_spanned!(span=> .#ident.get())
             }
             PathComponent::Field(FieldIdent::Unnamed(ident)) => {
                 let lit = Literal::usize_unsuffixed(*ident);
-                quote!(#lit.get())
+                quote_spanned!(span=> .#lit.get())
             }
-            //PathComponent::IndexInt(idx) => quote!([#idx]),
-            //PathComponent::IndexStr(s) => quote!([#s]),
-            PathComponent::IndexInt(_) => quote!(__keyable_index_int()),
-            PathComponent::IndexStr(_) => quote!(__keyable_index_str()),
+            //PathComponent::IndexInt(idx) => quote_spanned!(span=> [#idx]),
+            //PathComponent::IndexStr(s) => quote_spanned!(span=> [#s]),
+            PathComponent::IndexInt(val) => quote_spanned!(span=> .sequence_get(#val)),
+            PathComponent::IndexStr(val) => quote_spanned!(span=> .map_get(#val)),
         }
     }
 }

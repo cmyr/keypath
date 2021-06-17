@@ -18,7 +18,7 @@ pub(crate) fn keypath_impl(input: TokenStream) -> Result<TokenStream, SyntaxErro
     let element_fields = path_elements.iter().map(PathElement::to_tokens);
     let tokens = quote!(
         #root::get()
-        #( .#element_validators )*
+        #( #element_validators )*
 
         .to_key_path_with_root::<#root>(&[#( #element_fields ),*])
     );
@@ -33,9 +33,7 @@ struct PathElement {
 
 impl PathElement {
     fn traverse_type(&self) -> proc_macro2::TokenStream {
-        let ident = self.element.to_tokens();
-        let span = self.span.into();
-        quote_spanned!(span=> #ident)
+        self.element.to_tokens(self.span.into())
     }
 
     fn to_tokens(&self) -> proc_macro2::TokenStream {
@@ -166,10 +164,10 @@ fn parse_index(group: &Group) -> Result<PathElement, SyntaxError> {
     let literal = match token.clone() {
         TokenTree::Literal(lit) => lit,
         _ => {
-            return Err(syntax(
-                &token,
-                "keypath indexes must be string or integer literals",
-            ))
+            return Err(SyntaxError {
+                span: group.span(),
+                message: "keypath indexes must be string or integer literals".to_string(),
+            })
         }
     };
 
@@ -186,7 +184,7 @@ fn parse_index(group: &Group) -> Result<PathElement, SyntaxError> {
     }
     .map(|element| PathElement {
         element,
-        span: token.span(),
+        span: group.span(),
     })
 }
 
