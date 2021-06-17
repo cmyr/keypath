@@ -10,7 +10,10 @@ pub struct Leaf<T> {
 }
 
 impl<T> Leaf<T> {
-    pub fn to_key_path_with_root<Root>(self, fields: &'static [PathComponent]) -> KeyPath<Root, T> {
+    pub fn to_key_path_with_root<Root>(
+        &self,
+        fields: &'static [PathComponent],
+    ) -> KeyPath<Root, T> {
         KeyPath::__conjure_from_abyss(fields)
     }
 }

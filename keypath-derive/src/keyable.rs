@@ -119,21 +119,6 @@ fn mirror_struct(
     let struct_decl = quote!(#[allow(non_camel_case_types)]
         #struct_decl);
 
-    let fragments = fields
-        .iter()
-        .map(|fld| fld.validation_fn_ident())
-        .collect::<Vec<_>>();
-    let field_types = fields.iter().map(|fld| &fld.ty).collect::<Vec<_>>();
-    let methods = quote!(
-        #(pub fn #fragments(self) -> <#field_types as ::keypath::TypedKeyable>::PathFragment {
-            <#field_types as ::keypath::TypedKeyable>::get()
-        })*
-
-        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
-            ::keypath::KeyPath::__conjure_from_abyss(fields)
-        }
-    );
-
     let struct_field_init = fields.generate_mirror_inits();
     let struct_init = match fields.kind {
         FieldKind::Named => quote!(Self {#struct_field_init}),
@@ -148,7 +133,9 @@ fn mirror_struct(
                 #struct_init
             }
 
-            #methods
+        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+            ::keypath::KeyPath::__conjure_from_abyss(fields)
+        }
         }
     );
 

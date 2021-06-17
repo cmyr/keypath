@@ -106,11 +106,6 @@ impl Field {
         }
     }
 
-    pub fn validation_fn_ident(&self) -> proc_macro2::Ident {
-        let name = self.ident.validation_fn_name();
-        Ident::new(&name, self.span)
-    }
-
     pub fn match_arms(&self, method_tokens: TokenStream) -> TokenStream {
         let field = self.field_tokens();
         let variant = self.ident.path_component_tokens();

@@ -50,13 +50,6 @@ impl PathComponent {
 }
 
 impl FieldIdent {
-    pub fn validation_fn_name(&self) -> String {
-        match self {
-            FieldIdent::Named(s) => s.clone(),
-            FieldIdent::Unnamed(idx) => format!("_{}", idx),
-        }
-    }
-
     pub fn path_component_tokens(&self) -> proc_macro2::TokenStream {
         match self {
             FieldIdent::Named(s) => quote!(::keypath::internals::PathComponent::Named(#s)),
