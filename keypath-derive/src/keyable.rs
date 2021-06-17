@@ -63,7 +63,7 @@ fn derive_struct(
                 self
             }
 
-            fn get_field(&self, ident: &[::keypath::PathComponent]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field(&self, ident: &[::keypath::internals::PathComponent]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                  #( #get_field_arms )*
@@ -74,7 +74,7 @@ fn derive_struct(
                 }
             }
 
-            fn get_field_mut(&mut self, ident: &[::keypath::PathComponent]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field_mut(&mut self, ident: &[::keypath::internals::PathComponent]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                 #( #get_mut_field_arms )*
@@ -129,7 +129,7 @@ fn mirror_struct(
             <#field_types as ::keypath::TypedKeyable>::get()
         })*
 
-        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
     );

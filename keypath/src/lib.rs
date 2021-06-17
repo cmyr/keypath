@@ -1,8 +1,14 @@
+mod error;
 mod impls;
+pub mod internals;
 
+pub use error::{FieldError, FieldErrorKind};
 pub use keypath_derive::{keypath, Keyable};
+
 use std::any::Any;
 use std::marker::PhantomData;
+
+use internals::PathComponent;
 
 //TODO: change name? delete?
 /// A failable typed keypath.
@@ -42,15 +48,6 @@ impl<Root, Value> KeyPath<Root, Value> {
             _value: PhantomData,
         }
     }
-}
-
-/// A component of a keypath.
-#[derive(Debug, Clone, Copy)]
-pub enum PathComponent {
-    Unnamed(usize),
-    Named(&'static str),
-    IndexInt(usize),
-    IndexStr(&'static str),
 }
 
 /// A trait for types that expose their properties via keypath.
@@ -105,51 +102,5 @@ pub trait TypedKeyable: RawKeyable + Sized {
             .as_any_mut()
             .downcast_mut()
             .unwrap() = new;
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PathChecker<T>(PhantomData<*const T>);
-
-impl<T: TypedKeyable> PathChecker<T> {
-    pub fn get(self) -> T::PathFragment {
-        T::get()
-    }
-}
-
-impl<T> Default for PathChecker<T> {
-    fn default() -> Self {
-        PathChecker(PhantomData)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum FieldErrorKind {
-    IndexOutOfRange(usize),
-    MissinngKey(String),
-    InvalidField(PathComponent),
-}
-
-#[derive(Debug, Clone)]
-pub struct FieldError {
-    kind: FieldErrorKind,
-    type_name: &'static str,
-    // the number of *remaining* fields at which the error occured
-    depth: usize,
-}
-
-impl std::fmt::Display for FieldError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "")
-    }
-}
-
-impl FieldErrorKind {
-    pub fn into_error<T>(self, _source: &T, depth: usize) -> FieldError {
-        FieldError {
-            kind: self,
-            type_name: std::any::type_name::<T>(),
-            depth,
-        }
     }
 }

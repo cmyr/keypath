@@ -144,7 +144,7 @@ impl<T: TypedKeyable> TypedKeyable for Vec<T> {
 pub struct VecMirror<T>(std::marker::PhantomData<T>);
 
 impl<T: TypedKeyable> VecMirror<T> {
-    pub fn __keyable_index_int(self) -> <T as TypedKeyable>::PathFragment {
+    pub fn sequence_get(self) -> <T as TypedKeyable>::PathFragment {
         <T as TypedKeyable>::get()
     }
 }
@@ -218,7 +218,7 @@ where
 pub struct HashMapMirror<K, T>(std::marker::PhantomData<K>, std::marker::PhantomData<T>);
 
 impl<K, T: TypedKeyable> HashMapMirror<K, T> {
-    pub fn __keyable_index_str(self) -> <T as TypedKeyable>::PathFragment {
+    pub fn map_get(self) -> <T as TypedKeyable>::PathFragment {
         <T as TypedKeyable>::get()
     }
 }

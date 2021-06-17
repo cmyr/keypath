@@ -24,8 +24,10 @@ impl PathComponent {
     pub fn path_component_tokens(&self) -> proc_macro2::TokenStream {
         match self {
             PathComponent::Field(ident) => ident.path_component_tokens(),
-            PathComponent::IndexInt(idx) => quote!(::keypath::PathComponent::IndexInt(#idx)),
-            PathComponent::IndexStr(s) => quote!(::keypath::PathComponent::IndexStr(#s)),
+            PathComponent::IndexInt(idx) => {
+                quote!(::keypath::internals::PathComponent::IndexInt(#idx))
+            }
+            PathComponent::IndexStr(s) => quote!(::keypath::internals::PathComponent::IndexStr(#s)),
         }
     }
 
@@ -41,8 +43,8 @@ impl PathComponent {
             }
             //PathComponent::IndexInt(idx) => quote_spanned!(span=> [#idx]),
             //PathComponent::IndexStr(s) => quote_spanned!(span=> [#s]),
-            PathComponent::IndexInt(val) => quote_spanned!(span=> .sequence_get(#val)),
-            PathComponent::IndexStr(val) => quote_spanned!(span=> .map_get(#val)),
+            PathComponent::IndexInt(_) => quote_spanned!(span=> .sequence_get()),
+            PathComponent::IndexStr(_) => quote_spanned!(span=> .map_get()),
         }
     }
 }
@@ -57,8 +59,8 @@ impl FieldIdent {
 
     pub fn path_component_tokens(&self) -> proc_macro2::TokenStream {
         match self {
-            FieldIdent::Named(s) => quote!(::keypath::PathComponent::Named(#s)),
-            FieldIdent::Unnamed(idx) => quote!(::keypath::PathComponent::Unnamed(#idx)),
+            FieldIdent::Named(s) => quote!(::keypath::internals::PathComponent::Named(#s)),
+            FieldIdent::Unnamed(idx) => quote!(::keypath::internals::PathComponent::Unnamed(#idx)),
         }
     }
 }
