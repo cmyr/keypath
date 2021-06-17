@@ -1,7 +1,9 @@
 //! trait impls for std types
 
-use super::{FieldError, FieldErrorKind, KeyPath, PathComponent, RawKeyable, TypedKeyable};
 use std::any::Any;
+use std::collections::HashMap;
+
+use super::{FieldError, FieldErrorKind, KeyPath, PathComponent, RawKeyable, TypedKeyable};
 
 pub struct Leaf<T> {
     _type: std::marker::PhantomData<T>,
@@ -143,6 +145,80 @@ pub struct VecMirror<T>(std::marker::PhantomData<T>);
 
 impl<T: TypedKeyable> VecMirror<T> {
     pub fn __keyable_index_int(self) -> <T as TypedKeyable>::PathFragment {
+        <T as TypedKeyable>::fragment()
+    }
+}
+
+impl<K: 'static, T> RawKeyable for HashMap<K, T>
+where
+    T: TypedKeyable,
+    K: std::cmp::Eq + std::hash::Hash + std::borrow::Borrow<str>,
+{
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn get_field(&self, ident: &[PathComponent]) -> Result<&dyn RawKeyable, FieldError> {
+        match ident.split_first() {
+            None => Ok(self),
+            Some((PathComponent::IndexStr(idx), rest)) => self
+                .get(*idx)
+                .ok_or_else(|| FieldError {
+                    kind: FieldErrorKind::MissinngKey(idx.to_string()),
+                    type_name: std::any::type_name::<Self>(),
+                    depth: rest.len(),
+                })
+                .and_then(|t| t.get_field(rest)),
+            Some((field, rest)) => Err(FieldError {
+                kind: FieldErrorKind::InvalidField(*field),
+                type_name: std::any::type_name::<Self>(),
+                depth: rest.len(),
+            }),
+        }
+    }
+
+    fn get_field_mut(
+        &mut self,
+        ident: &[PathComponent],
+    ) -> Result<&mut dyn RawKeyable, FieldError> {
+        match ident.split_first() {
+            None => Ok(self),
+            Some((PathComponent::IndexStr(idx), rest)) => self
+                .get_mut(idx)
+                .ok_or_else(|| FieldError {
+                    kind: FieldErrorKind::MissinngKey(idx.to_string()),
+                    type_name: std::any::type_name::<Self>(),
+                    depth: rest.len(),
+                })
+                .and_then(|t| t.get_field_mut(rest)),
+            Some((field, rest)) => Err(FieldError {
+                kind: FieldErrorKind::InvalidField(*field),
+                type_name: std::any::type_name::<Self>(),
+                depth: rest.len(),
+            }),
+        }
+    }
+}
+
+impl<K, T> TypedKeyable for HashMap<K, T>
+where
+    K: std::cmp::Eq + std::hash::Hash + std::borrow::Borrow<str> + 'static,
+    T: TypedKeyable,
+{
+    type PathFragment = HashMapMirror<K, T>;
+
+    fn fragment() -> Self::PathFragment {
+        HashMapMirror(std::marker::PhantomData, std::marker::PhantomData)
+    }
+}
+
+pub struct HashMapMirror<K, T>(std::marker::PhantomData<K>, std::marker::PhantomData<T>);
+
+impl<K, T: TypedKeyable> HashMapMirror<K, T> {
+    pub fn __keyable_index_str(self) -> <T as TypedKeyable>::PathFragment {
         <T as TypedKeyable>::fragment()
     }
 }

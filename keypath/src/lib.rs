@@ -111,6 +111,7 @@ pub trait TypedKeyable: RawKeyable + Sized {
 #[derive(Debug, Clone)]
 pub enum FieldErrorKind {
     IndexOutOfRange(usize),
+    MissinngKey(String),
     InvalidField(PathComponent),
 }
 
