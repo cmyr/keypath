@@ -2,19 +2,19 @@ use keypath::{keypath, Keyable};
 use std::collections::HashMap;
 
 #[derive(Keyable)]
-pub struct DemoStruct {
+struct DemoStruct {
     friend_lists: HashMap<String, Vec<Person>>,
 }
 
 #[derive(Keyable)]
-pub struct Person {
+struct Person {
     name: String,
     magnitude: f64,
     size: Size,
 }
 
 #[derive(Keyable)]
-pub struct Size {
+struct Size {
     big: bool,
     heft: u8,
 }

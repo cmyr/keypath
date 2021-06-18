@@ -52,7 +52,7 @@ fn derive_struct(
         .iter()
         .map(|fld| fld.match_arms(quote!(get_field_mut)));
 
-    let (fragment_decl, typed_trait_decl) = mirror_struct(ident, &input.generics, &fields)?;
+    let (fragment_decl, typed_trait_decl) = mirror_struct(ident, &input.vis, &input.generics, &fields)?;
     let res = quote! {
         impl<#impl_generics> ::keypath::internals::RawKeyable for #ident #ty_generics #where_clause {
             fn as_any(&self) -> &dyn ::std::any::Any {
@@ -110,6 +110,7 @@ fn derive_struct(
 
 fn mirror_struct(
     base_ident: &Ident,
+    base_vis: &syn::Visibility,
     generics: &syn::Generics,
     fields: &Fields,
 ) -> Result<(proc_macro2::TokenStream, proc_macro2::TokenStream), syn::Error> {
@@ -144,7 +145,7 @@ fn mirror_struct(
                 #struct_init
             }
 
-        pub fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+        #base_vis fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
         }

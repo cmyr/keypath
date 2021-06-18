@@ -1,14 +1,14 @@
 use keypath::{keypath, Keyable};
 
 #[derive(Keyable)]
-pub struct DemoPerson {
+struct DemoPerson {
     name: String,
     magnitude: f64,
     size: Size,
 }
 
 #[derive(Keyable)]
-pub struct Size {
+struct Size {
     big: bool,
     heft: u8,
 }

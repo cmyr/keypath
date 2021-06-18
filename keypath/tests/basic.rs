@@ -1,7 +1,7 @@
 use keypath::{keypath, Keyable};
 
 #[derive(Keyable)]
-pub struct DemoPerson {
+struct DemoPerson {
     name: String,
     magnitude: f64,
 }
