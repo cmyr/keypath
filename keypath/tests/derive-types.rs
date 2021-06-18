@@ -19,7 +19,7 @@ struct EmptyFieldStruct {}
 
 #[derive(Keyable)]
 struct SingleFieldStruct {
-a: bool,
+    a: bool,
 }
 
 #[derive(Keyable)]
@@ -27,5 +27,4 @@ struct MultiFieldStruct {
     a: bool,
     b: i64,
     c: String,
-    }
-
+}
