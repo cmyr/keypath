@@ -12,9 +12,9 @@ pub enum PathComponent {
 #[derive(Debug, Clone, Copy)]
 pub struct PathChecker<T>(PhantomData<*const T>);
 
-impl<T: super::TypedKeyable> PathChecker<T> {
-    pub fn get(self) -> T::PathFragment {
-        T::get()
+impl<T: super::Keyable> PathChecker<T> {
+    pub fn mirror(self) -> T::Mirror {
+        T::mirror()
     }
 }
 

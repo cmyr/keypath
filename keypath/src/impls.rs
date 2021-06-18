@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 
-use super::{FieldError, FieldErrorKind, KeyPath, PathComponent, RawKeyable, TypedKeyable};
+use super::{FieldError, FieldErrorKind, KeyPath, Keyable, PathComponent, RawKeyable};
 
 pub struct Leaf<T> {
     _type: std::marker::PhantomData<T>,
@@ -53,9 +53,9 @@ macro_rules! keyable_leaf {
             }
         }
 
-        impl TypedKeyable for $name {
-            type PathFragment = Leaf<$name>;
-            fn get() -> Leaf<$name> {
+        impl Keyable for $name {
+            type Mirror = Leaf<$name>;
+            fn mirror() -> Leaf<$name> {
                 Leaf {
                     _type: std::marker::PhantomData,
                 }
@@ -136,25 +136,25 @@ impl<T: RawKeyable> RawKeyable for Vec<T> {
     }
 }
 
-impl<T: TypedKeyable> TypedKeyable for Vec<T> {
-    type PathFragment = VecMirror<T>;
+impl<T: Keyable> Keyable for Vec<T> {
+    type Mirror = VecMirror<T>;
 
-    fn get() -> Self::PathFragment {
+    fn mirror() -> Self::Mirror {
         VecMirror(std::marker::PhantomData)
     }
 }
 
 pub struct VecMirror<T>(std::marker::PhantomData<T>);
 
-impl<T: TypedKeyable> VecMirror<T> {
-    pub fn sequence_get(self) -> <T as TypedKeyable>::PathFragment {
-        <T as TypedKeyable>::get()
+impl<T: Keyable> VecMirror<T> {
+    pub fn sequence_get(self) -> <T as Keyable>::Mirror {
+        <T as Keyable>::mirror()
     }
 }
 
 impl<K: 'static, T> RawKeyable for HashMap<K, T>
 where
-    T: TypedKeyable,
+    T: Keyable,
     K: std::cmp::Eq + std::hash::Hash + std::borrow::Borrow<str>,
 {
     fn as_any(&self) -> &dyn Any {
@@ -206,22 +206,22 @@ where
     }
 }
 
-impl<K, T> TypedKeyable for HashMap<K, T>
+impl<K, T> Keyable for HashMap<K, T>
 where
     K: std::cmp::Eq + std::hash::Hash + std::borrow::Borrow<str> + 'static,
-    T: TypedKeyable,
+    T: Keyable,
 {
-    type PathFragment = HashMapMirror<K, T>;
+    type Mirror = HashMapMirror<K, T>;
 
-    fn get() -> Self::PathFragment {
+    fn mirror() -> Self::Mirror {
         HashMapMirror(std::marker::PhantomData, std::marker::PhantomData)
     }
 }
 
 pub struct HashMapMirror<K, T>(std::marker::PhantomData<K>, std::marker::PhantomData<T>);
 
-impl<K, T: TypedKeyable> HashMapMirror<K, T> {
-    pub fn map_get(self) -> <T as TypedKeyable>::PathFragment {
-        <T as TypedKeyable>::get()
+impl<K, T: Keyable> HashMapMirror<K, T> {
+    pub fn map_get(self) -> <T as Keyable>::Mirror {
+        <T as Keyable>::mirror()
     }
 }

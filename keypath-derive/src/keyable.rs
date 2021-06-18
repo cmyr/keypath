@@ -43,7 +43,7 @@ fn derive_struct(
     s: &DataStruct,
 ) -> Result<proc_macro2::TokenStream, syn::Error> {
     let ident = &input.ident;
-    let impl_generics = add_generic_bounds(&input.generics, quote!(::keypath::TypedKeyable));
+    let impl_generics = add_generic_bounds(&input.generics, quote!(::keypath::Keyable));
     let (_, ty_generics, where_clause) = &input.generics.split_for_impl();
 
     let fields = Fields::parse_ast(&s.fields)?;
@@ -86,11 +86,11 @@ fn derive_struct(
             }
         }
 
-        impl<#impl_generics> ::keypath::Keyable for #ident #ty_generics #where_clause {}
+        //impl<#impl_generics> ::keypath::Keyable for #ident #ty_generics #where_clause {}
 
         #fragment_decl
 
-        impl<#impl_generics> ::keypath::TypedKeyable for #ident #ty_generics #where_clause {
+        impl<#impl_generics> ::keypath::Keyable for #ident #ty_generics #where_clause {
             #typed_trait_decl
         }
 
@@ -116,7 +116,7 @@ fn mirror_struct(
     fields: &Fields,
 ) -> Result<(proc_macro2::TokenStream, proc_macro2::TokenStream), syn::Error> {
     let (_, ty_generics, _) = generics.split_for_impl();
-    let impl_generics = add_generic_bounds(generics, quote!(::keypath::TypedKeyable));
+    let impl_generics = add_generic_bounds(generics, quote!(::keypath::Keyable));
     let mirror_ident = mirror_ident_for_base_ident(base_ident);
 
     let field_decls = fields.generate_mirror_decls();
@@ -153,8 +153,8 @@ fn mirror_struct(
     );
 
     let trait_impl = quote!(
-        type PathFragment = #mirror_ident #ty_generics;
-        fn get() -> #mirror_ident #ty_generics{
+        type Mirror = #mirror_ident #ty_generics;
+        fn mirror() -> #mirror_ident #ty_generics{
             #mirror_ident::new()
         }
     );

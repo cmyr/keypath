@@ -28,7 +28,7 @@ impl<T: 'static> SimplePath<T> {
 }
 
 /// A non-fallible keypath.
-pub struct KeyPath<Root, Value> {
+pub struct KeyPath<Root: ?Sized, Value> {
     fields: &'static [PathComponent],
     _root: PhantomData<Root>,
     _value: PhantomData<Value>,
@@ -59,8 +59,16 @@ pub trait RawKeyable: 'static {
         -> Result<&mut dyn RawKeyable, FieldError>;
 }
 
-//TODO: obsolete? not obsolete? replace with TypedKeyable? combine them?
 pub trait Keyable: RawKeyable {
+    /// A type that describes properties on the inner type, for compile-time checking.
+    ///
+    /// This is the worst part of the code right now? We generate structs with magic
+    /// names for each Keyable type.
+    type Mirror;
+
+    /// Return an instance of this type's mirror.
+    fn mirror() -> Self::Mirror;
+
     fn item_at_path1<T>(&self, path: &SimplePath<T>) -> Result<&T, FieldError> {
         self.get_field(path.fields)
             //.ok()
@@ -68,24 +76,13 @@ pub trait Keyable: RawKeyable {
             .map(|t| t.as_any().downcast_ref().unwrap())
     }
 
-    fn set_item_at_path1<T>(&mut self, path: &SimplePath<T>, new: T) -> Result<(), FieldError> {
-        *self
-            .get_field_mut(path.fields)?
-            .as_any_mut()
-            .downcast_mut()
-            .unwrap() = new;
-        Ok(())
+    fn try_item_at_path_mut<T: 'static>(&mut self, path: &KeyPath<Self, T>) -> &mut T {
+        self.get_field_mut(path.fields)
+            //.ok()
+            //FIXME: no unwrap here, some new more expresesive error type instead
+            .map(|t| t.as_any_mut().downcast_mut().unwrap())
+            .unwrap()
     }
-}
-
-pub trait TypedKeyable: RawKeyable + Sized {
-    /// A type that describes properties on the inner type, for compile-time checking.
-    ///
-    /// This is the worst part of the code right now? We generate structs with magic
-    /// names for each Keyable type.
-    type PathFragment;
-
-    fn get() -> Self::PathFragment;
 
     fn item_at_path<T: 'static>(&self, path: &KeyPath<Self, T>) -> &T {
         self.get_field(path.fields)

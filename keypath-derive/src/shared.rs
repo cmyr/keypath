@@ -35,11 +35,11 @@ impl PathComponent {
         match self {
             PathComponent::Field(FieldIdent::Named(ident)) => {
                 let ident = Ident::new(&ident, Span::call_site());
-                quote_spanned!(span=> .#ident.get())
+                quote_spanned!(span=> .#ident.mirror())
             }
             PathComponent::Field(FieldIdent::Unnamed(ident)) => {
                 let lit = Literal::usize_unsuffixed(*ident);
-                quote_spanned!(span=> .#lit.get())
+                quote_spanned!(span=> .#lit.mirror())
             }
             //PathComponent::IndexInt(idx) => quote_spanned!(span=> [#idx]),
             //PathComponent::IndexStr(s) => quote_spanned!(span=> [#s]),

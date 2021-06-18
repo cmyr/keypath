@@ -1,4 +1,4 @@
-use keypath::{keypath, Keyable, TypedKeyable};
+use keypath::{keypath, Keyable};
 use std::collections::HashMap;
 
 #[derive(Keyable)]

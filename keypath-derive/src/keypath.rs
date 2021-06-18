@@ -17,7 +17,7 @@ pub(crate) fn keypath_impl(input: TokenStream) -> Result<TokenStream, SyntaxErro
     let element_validators = path_elements.iter().map(PathElement::traverse_type);
     let element_fields = path_elements.iter().map(PathElement::to_tokens);
     let tokens = quote!(
-        #root::get()
+        #root::mirror()
         #( #element_validators )*
 
         .to_key_path_with_root::<#root>(&[#( #element_fields ),*])

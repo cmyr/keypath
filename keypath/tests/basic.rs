@@ -1,4 +1,4 @@
-use keypath::{keypath, Keyable, TypedKeyable};
+use keypath::{keypath, Keyable};
 
 #[derive(Keyable)]
 pub struct DemoPerson {
