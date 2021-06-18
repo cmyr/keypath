@@ -54,13 +54,22 @@ pub use error::{FieldError, FieldErrorKind};
 pub use keypath_proc_macros::{keypath, Keyable};
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::marker::PhantomData;
 
 /// A non-fallible keypath.
 pub struct KeyPath<Root: ?Sized, Value: 'static> {
-    fields: &'static [internals::PathComponent],
-    _root: PhantomData<Root>,
+    partial: PartialKeyPath<Root>,
     _value: PhantomData<Value>,
+}
+
+// we don't really use this yet
+#[doc(hidden)]
+/// A keypath for a known route, but which doesn't know the destination type.
+#[derive(Debug)]
+pub struct PartialKeyPath<Root: ?Sized> {
+    fields: Cow<'static, [internals::PathComponent]>,
+    _root: PhantomData<Root>,
 }
 
 impl<Root, Value> KeyPath<Root, Value> {
@@ -72,9 +81,59 @@ impl<Root, Value> KeyPath<Root, Value> {
     #[doc(hidden)]
     pub fn __conjure_from_abyss(fields: &'static [internals::PathComponent]) -> Self {
         KeyPath {
-            fields,
-            _root: PhantomData,
+            partial: PartialKeyPath {
+                fields: Cow::Borrowed(fields),
+                _root: PhantomData,
+            },
             _value: PhantomData,
+        }
+    }
+
+    /// Create a new `KeyPath` by combining two routes.
+    ///
+    /// The final type of the first route must be the first type of the second
+    /// route; assuming both paths were created with the [`keypath!`] macro,
+    /// the resulting path must be valid.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use keypath::{Keyable, KeyPath, keypath};
+    ///
+    /// #[derive(Keyable)]
+    /// struct Person {
+    ///     name: String,
+    ///     friends: Vec<String>,
+    ///     size: Size,
+    /// }
+    ///
+    /// #[derive(Keyable)]
+    /// struct Size {
+    ///     big: bool,
+    ///     heft: u8,
+    /// }
+    ///
+    /// let mut person = Person {
+    ///     name: "coco".into(),
+    ///     friends: vec!["eli".into(), "nico".into(), "yaya".into()],
+    ///     size: Size { big: false, heft: 45 }
+    /// };
+    ///
+    /// let size = keypath!(Person.size);
+    /// let heft = keypath!(Size.heft);
+    /// let combined = size.append(&heft);
+    ///
+    /// assert_eq!(person[&combined], 45);
+    /// ```
+    pub fn append<T>(&self, other: &KeyPath<Value, T>) -> KeyPath<Root, T> {
+        let mut partial = self.partial.clone();
+        partial
+            .fields
+            .to_mut()
+            .extend(other.partial.fields.iter().clone());
+        KeyPath {
+            partial,
+            _value: other._value,
         }
     }
 }
@@ -166,6 +225,16 @@ pub trait Keyable: internals::RawKeyable {
 
 impl<Root: ?Sized, Value: 'static> AsRef<[internals::PathComponent]> for KeyPath<Root, Value> {
     fn as_ref(&self) -> &[internals::PathComponent] {
-        &self.fields
+        self.partial.fields.as_ref()
     }
 }
+
+impl<R: ?Sized> Clone for PartialKeyPath<R> {
+    fn clone(&self) -> Self {
+        PartialKeyPath {
+            fields: self.fields.clone(),
+            _root: PhantomData,
+        }
+    }
+}
+

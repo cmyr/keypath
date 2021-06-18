@@ -43,5 +43,15 @@ assert_eq!(person.size.heft, 101);
 This may not seem especially useful on its own, but it is an ergonomic building
 block for things like UI bindings, and observable objects.
 
+## todos
+
+There are a bunch of additional features and ideas that would be worth
+exploring, here:
+
+- allow collection access to return optionals, with chaining:
+  `People.friends[10]?.age` would allow the indexing operation to fail.
+- easier implementation for collections (currently manual, no derive available)
+- support for generics in the `keypath!` macro
+
 
 [keypaths]: https://www.swiftbysundell.com/articles/the-power-of-key-paths-in-swift/
