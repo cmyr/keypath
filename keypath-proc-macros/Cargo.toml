@@ -3,6 +3,10 @@ name = "keypath-proc-macros"
 version = "0.1.0"
 authors = ["Colin Rofls <colin@cmyr.net>"]
 edition = "2018"
+license = "Apache-2.0"
+readme = "../README.md"
+description = "proc macros for the keypath crate"
+repository = "https://github.com/cmyr/keypath"
 
 [lib]
 proc-macro = true

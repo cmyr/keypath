@@ -52,7 +52,8 @@ fn derive_struct(
         .iter()
         .map(|fld| fld.match_arms(quote!(get_field_mut)));
 
-    let (fragment_decl, typed_trait_decl) = mirror_struct(ident, &input.vis, &input.generics, &fields)?;
+    let (fragment_decl, typed_trait_decl) =
+        mirror_struct(ident, &input.vis, &input.generics, &fields)?;
     let res = quote! {
         impl<#impl_generics> ::keypath::internals::RawKeyable for #ident #ty_generics #where_clause {
             fn as_any(&self) -> &dyn ::std::any::Any {
