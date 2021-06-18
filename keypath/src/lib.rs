@@ -10,25 +10,8 @@ use std::marker::PhantomData;
 
 use internals::PathComponent;
 
-//TODO: change name? delete?
-/// A failable typed keypath.
-#[derive(Debug, Clone, Copy)]
-pub struct SimplePath<T: 'static> {
-    fields: &'static [PathComponent],
-    _type: PhantomData<T>,
-}
-
-impl<T: 'static> SimplePath<T> {
-    pub fn new(fields: &'static [PathComponent]) -> SimplePath<T> {
-        SimplePath {
-            fields,
-            _type: PhantomData,
-        }
-    }
-}
-
 /// A non-fallible keypath.
-pub struct KeyPath<Root: ?Sized, Value> {
+pub struct KeyPath<Root: ?Sized, Value: 'static> {
     fields: &'static [PathComponent],
     _root: PhantomData<Root>,
     _value: PhantomData<Value>,
@@ -51,6 +34,9 @@ impl<Root, Value> KeyPath<Root, Value> {
 }
 
 /// A trait for types that expose their properties via keypath.
+///
+/// All of the dynamism and traversal logic happens here; its split into a
+/// separate trait for object safety.
 pub trait RawKeyable: 'static {
     fn as_any(&self) -> &dyn Any;
     fn as_any_mut(&mut self) -> &mut dyn Any;
@@ -69,34 +55,46 @@ pub trait Keyable: RawKeyable {
     /// Return an instance of this type's mirror.
     fn mirror() -> Self::Mirror;
 
-    fn item_at_path1<T>(&self, path: &SimplePath<T>) -> Result<&T, FieldError> {
-        self.get_field(path.fields)
-            //.ok()
-            //FIXME: no unwrap here, some new more expresesive error type instead
-            .map(|t| t.as_any().downcast_ref().unwrap())
+    //TODO: this is a bit of a mess, and I don't know what methods we will want
+    //or need. Having partial keypaths or keypaths that are failable seems reasonable,
+    //but I don't know what the types are going to look like yet.
+    fn try_any_at_path(&self, path: impl AsRef<[PathComponent]>) -> Result<&dyn Any, FieldError> {
+        self.get_field(path.as_ref()).map(RawKeyable::as_any)
     }
 
-    fn try_item_at_path_mut<T: 'static>(&mut self, path: &KeyPath<Self, T>) -> &mut T {
-        self.get_field_mut(path.fields)
-            //.ok()
-            //FIXME: no unwrap here, some new more expresesive error type instead
-            .map(|t| t.as_any_mut().downcast_mut().unwrap())
-            .unwrap()
+    fn try_any_at_path_mut(
+        &mut self,
+        path: impl AsRef<[PathComponent]>,
+    ) -> Result<&mut dyn Any, FieldError> {
+        self.get_field_mut(path.as_ref())
+            .map(RawKeyable::as_any_mut)
     }
 
-    fn item_at_path<T: 'static>(&self, path: &KeyPath<Self, T>) -> &T {
-        self.get_field(path.fields)
-            //.ok()
-            //FIXME: no unwrap here, some new more expresesive error type instead
-            .map(|t| t.as_any().downcast_ref().unwrap())
-            .unwrap()
+    //NOTE: these two methods are intended in cases where the keypath has not been
+    //validated, but currently we don't really support creating invalid keypaths.
+    fn try_item_at_path<T>(&self, path: &KeyPath<Self, T>) -> Result<&T, FieldError> {
+        self.try_any_at_path(path)
+            ////FIXME: no unwrap here, some new more expresesive error type instead
+            .map(|t| t.downcast_ref().unwrap())
     }
 
-    fn item_at_path_mut<T: 'static>(&mut self, path: &KeyPath<Self, T>) -> &mut T {
-        self.get_field_mut(path.fields)
-            //.ok()
+    fn try_item_at_path_mut<T>(&mut self, path: &KeyPath<Self, T>) -> Result<&mut T, FieldError> {
+        self.try_any_at_path_mut(path)
             //FIXME: no unwrap here, some new more expresesive error type instead
-            .map(|t| t.as_any_mut().downcast_mut().unwrap())
-            .unwrap()
+            .map(|t| t.downcast_mut().unwrap())
+    }
+
+    fn item_at_path<T>(&self, path: &KeyPath<Self, T>) -> &T {
+        self.try_item_at_path(path).unwrap()
+    }
+
+    fn item_at_path_mut<T>(&mut self, path: &KeyPath<Self, T>) -> &mut T {
+        self.try_item_at_path_mut(path).unwrap()
+    }
+}
+
+impl<Root: ?Sized, Value: 'static> AsRef<[PathComponent]> for KeyPath<Root, Value> {
+    fn as_ref(&self) -> &[PathComponent] {
+        &self.fields
     }
 }
