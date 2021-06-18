@@ -51,7 +51,7 @@ mod impls;
 pub mod internals;
 
 pub use error::{FieldError, FieldErrorKind};
-pub use keypath_derive::{keypath, Keyable};
+pub use keypath_proc_macros::{keypath, Keyable};
 
 use std::any::Any;
 use std::marker::PhantomData;

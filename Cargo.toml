@@ -1,5 +1,5 @@
 [workspace]
 members = [
 "keypath",
-"keypath-derive",
+"keypath-proc-macros",
 ]

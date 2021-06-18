@@ -8,6 +8,6 @@ description = "Access members via nested keypaths"
 repository = "https://github.com/cmyr/keypath"
 
 [dependencies]
-keypath-derive = { version = "0.1.0", path = "../keypath-derive" }
+keypath-proc-macros = { version = "0.1.0", path = "../keypath-proc-macros" }
 
 
