@@ -93,6 +93,19 @@ fn derive_struct(
         impl<#impl_generics> ::keypath::TypedKeyable for #ident #ty_generics #where_clause {
             #typed_trait_decl
         }
+
+        impl <Value: 'static, #impl_generics> std::ops::Index<&::keypath::KeyPath<#ident #ty_generics, Value>> for #ident #ty_generics #where_clause {
+            type Output = Value;
+            fn index(&self, index: &::keypath::KeyPath<#ident #ty_generics, Value>) -> &Self::Output {
+                self.item_at_path(index)
+            }
+        }
+
+        impl <Value: 'static, #impl_generics> std::ops::IndexMut<&::keypath::KeyPath<#ident #ty_generics, Value>> for #ident #ty_generics #where_clause {
+            fn index_mut(&mut self, index: &::keypath::KeyPath<#ident #ty_generics, Value>) -> &mut Self::Output {
+                self.item_at_path_mut(index)
+            }
+        }
     };
     Ok(res)
 }

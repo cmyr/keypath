@@ -11,7 +11,7 @@ fn keypath() {
     let mut person = DemoPerson("coco".to_string(), 42.0, Size(1.0, 5.0));
 
     let path = keypath!(DemoPerson.2 .0);
-    assert_eq!(person.item_at_path(&path), &1.0);
-    person.set_item_at_path(&path, 15.0);
+    assert_eq!(person[&path], 1.0);
+    person[&path] = 15.0;
     assert_eq!(person.2 .0, 15.0);
 }

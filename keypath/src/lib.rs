@@ -95,12 +95,11 @@ pub trait TypedKeyable: RawKeyable + Sized {
             .unwrap()
     }
 
-    fn set_item_at_path<T: 'static>(&mut self, path: &KeyPath<Self, T>, new: T) {
-        *self
-            .get_field_mut(path.fields)
+    fn item_at_path_mut<T: 'static>(&mut self, path: &KeyPath<Self, T>) -> &mut T {
+        self.get_field_mut(path.fields)
+            //.ok()
+            //FIXME: no unwrap here, some new more expresesive error type instead
+            .map(|t| t.as_any_mut().downcast_mut().unwrap())
             .unwrap()
-            .as_any_mut()
-            .downcast_mut()
-            .unwrap() = new;
     }
 }

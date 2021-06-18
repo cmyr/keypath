@@ -25,7 +25,7 @@ fn keypath() {
     };
 
     let path = keypath!(DemoPerson.size.heft);
-    assert_eq!(person.item_at_path(&path), &200);
-    person.set_item_at_path(&path, 15);
+    assert_eq!(person[&path], 200);
+    person[&path] = 15;
     assert_eq!(person.size.heft, 15);
 }

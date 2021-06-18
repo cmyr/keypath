@@ -44,19 +44,10 @@ fn nested_keypath() {
     friend_lists.insert("play".to_string(), vec![jojo]);
 
     let mut demo = DemoStruct { friend_lists };
-
     let jojo_name = keypath!(DemoStruct.friend_lists["play"][0].name);
 
-    assert_eq!(demo.item_at_path(&jojo_name), "jojo");
-    demo.set_item_at_path(&jojo_name, "Brad".into());
-    assert_eq!(demo.item_at_path(&jojo_name), "Brad");
+    assert_eq!(demo[&jojo_name], "jojo");
+    demo[&jojo_name] = "Brad".into();
+    assert_eq!(demo[&jojo_name], "Brad");
     assert_eq!(demo.friend_lists["play"][0].name, "Brad");
 }
-
-//#[test]
-//fn some_error_meessages_to_improve() {
-//// dot followed by brace
-//let jojo_name = keypath!(DemoStruct.["play"][0].name);
-//// two dots
-//let jojo_name = keypath!(DemoStruct..["play"][0].name);
-//}

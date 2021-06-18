@@ -14,7 +14,9 @@ fn simple_keypath() {
     };
 
     let name_path = keypath!(DemoPerson.name);
-    assert_eq!(person.item_at_path(&name_path), "Jojobell");
+    assert_eq!(person[&name_path], "Jojobell");
     person.name = "Colin".into();
-    assert_eq!(person.item_at_path(&name_path), "Colin");
+    assert_eq!(person[&name_path], "Colin");
+    person[&name_path] = "Sriti".into();
+    assert_eq!(person[&name_path], "Sriti");
 }
