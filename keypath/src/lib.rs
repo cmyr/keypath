@@ -8,11 +8,9 @@ pub use keypath_derive::{keypath, Keyable};
 use std::any::Any;
 use std::marker::PhantomData;
 
-use internals::PathComponent;
-
 /// A non-fallible keypath.
 pub struct KeyPath<Root: ?Sized, Value: 'static> {
-    fields: &'static [PathComponent],
+    fields: &'static [internals::PathComponent],
     _root: PhantomData<Root>,
     _value: PhantomData<Value>,
 }
@@ -24,7 +22,7 @@ impl<Root, Value> KeyPath<Root, Value> {
     /// to be called after a path has been type-checked, presumably in the
     /// context of a proc_macro.
     #[doc(hidden)]
-    pub fn __conjure_from_abyss(fields: &'static [PathComponent]) -> Self {
+    pub fn __conjure_from_abyss(fields: &'static [internals::PathComponent]) -> Self {
         KeyPath {
             fields,
             _root: PhantomData,
@@ -33,19 +31,7 @@ impl<Root, Value> KeyPath<Root, Value> {
     }
 }
 
-/// A trait for types that expose their properties via keypath.
-///
-/// All of the dynamism and traversal logic happens here; its split into a
-/// separate trait for object safety.
-pub trait RawKeyable: 'static {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-    fn get_field(&self, ident: &[PathComponent]) -> Result<&dyn RawKeyable, FieldError>;
-    fn get_field_mut(&mut self, ident: &[PathComponent])
-        -> Result<&mut dyn RawKeyable, FieldError>;
-}
-
-pub trait Keyable: RawKeyable {
+pub trait Keyable: internals::RawKeyable {
     /// A type that describes properties on the inner type, for compile-time checking.
     ///
     /// This is the worst part of the code right now? We generate structs with magic
@@ -58,16 +44,20 @@ pub trait Keyable: RawKeyable {
     //TODO: this is a bit of a mess, and I don't know what methods we will want
     //or need. Having partial keypaths or keypaths that are failable seems reasonable,
     //but I don't know what the types are going to look like yet.
-    fn try_any_at_path(&self, path: impl AsRef<[PathComponent]>) -> Result<&dyn Any, FieldError> {
-        self.get_field(path.as_ref()).map(RawKeyable::as_any)
+    fn try_any_at_path(
+        &self,
+        path: impl AsRef<[internals::PathComponent]>,
+    ) -> Result<&dyn Any, FieldError> {
+        self.get_field(path.as_ref())
+            .map(internals::RawKeyable::as_any)
     }
 
     fn try_any_at_path_mut(
         &mut self,
-        path: impl AsRef<[PathComponent]>,
+        path: impl AsRef<[internals::PathComponent]>,
     ) -> Result<&mut dyn Any, FieldError> {
         self.get_field_mut(path.as_ref())
-            .map(RawKeyable::as_any_mut)
+            .map(internals::RawKeyable::as_any_mut)
     }
 
     //NOTE: these two methods are intended in cases where the keypath has not been
@@ -93,8 +83,8 @@ pub trait Keyable: RawKeyable {
     }
 }
 
-impl<Root: ?Sized, Value: 'static> AsRef<[PathComponent]> for KeyPath<Root, Value> {
-    fn as_ref(&self) -> &[PathComponent] {
+impl<Root: ?Sized, Value: 'static> AsRef<[internals::PathComponent]> for KeyPath<Root, Value> {
+    fn as_ref(&self) -> &[internals::PathComponent] {
         &self.fields
     }
 }

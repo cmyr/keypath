@@ -3,7 +3,8 @@
 use std::any::Any;
 use std::collections::HashMap;
 
-use super::{FieldError, FieldErrorKind, KeyPath, Keyable, PathComponent, RawKeyable};
+use super::internals::{PathComponent, RawKeyable};
+use super::{FieldError, FieldErrorKind, KeyPath, Keyable};
 
 pub struct Leaf<T> {
     _type: std::marker::PhantomData<T>,

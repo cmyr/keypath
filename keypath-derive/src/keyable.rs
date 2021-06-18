@@ -54,7 +54,7 @@ fn derive_struct(
 
     let (fragment_decl, typed_trait_decl) = mirror_struct(ident, &input.generics, &fields)?;
     let res = quote! {
-        impl<#impl_generics> ::keypath::RawKeyable for #ident #ty_generics #where_clause {
+        impl<#impl_generics> ::keypath::internals::RawKeyable for #ident #ty_generics #where_clause {
             fn as_any(&self) -> &dyn ::std::any::Any {
                 self
             }
@@ -63,7 +63,7 @@ fn derive_struct(
                 self
             }
 
-            fn get_field(&self, ident: &[::keypath::internals::PathComponent]) -> Result<&dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field(&self, ident: &[::keypath::internals::PathComponent]) -> Result<&dyn ::keypath::internals::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                  #( #get_field_arms )*
@@ -74,7 +74,7 @@ fn derive_struct(
                 }
             }
 
-            fn get_field_mut(&mut self, ident: &[::keypath::internals::PathComponent]) -> Result<&mut dyn ::keypath::RawKeyable, ::keypath::FieldError> {
+            fn get_field_mut(&mut self, ident: &[::keypath::internals::PathComponent]) -> Result<&mut dyn ::keypath::internals::RawKeyable, ::keypath::FieldError> {
                 match ident.split_first() {
                 None => Ok(self),
                 #( #get_mut_field_arms )*
@@ -85,8 +85,6 @@ fn derive_struct(
                 }
             }
         }
-
-        //impl<#impl_generics> ::keypath::Keyable for #ident #ty_generics #where_clause {}
 
         #fragment_decl
 
