@@ -142,11 +142,11 @@ fn mirror_struct(
         #struct_decl
 
         impl< #impl_generics> #mirror_ident #ty_generics {
-            fn new() -> Self {
+            const fn new() -> Self {
                 #struct_init
             }
 
-        #base_vis fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+        #base_vis const fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
         }

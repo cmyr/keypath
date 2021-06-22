@@ -2,16 +2,21 @@
 
 use std::any::Any;
 use std::collections::HashMap;
+use std::marker::PhantomData;
 
 use super::internals::{PathComponent, RawKeyable};
 use super::{FieldError, FieldErrorKind, KeyPath, Keyable};
 
 pub struct Leaf<T> {
-    _type: std::marker::PhantomData<T>,
+    _type: PhantomData<T>,
 }
 
 impl<T> Leaf<T> {
-    pub fn to_key_path_with_root<Root>(
+    pub const fn new() -> Self {
+        Leaf { _type: PhantomData }
+    }
+
+    pub const fn to_key_path_with_root<Root>(
         &self,
         fields: &'static [PathComponent],
     ) -> KeyPath<Root, T> {
@@ -57,9 +62,7 @@ macro_rules! keyable_leaf {
         impl Keyable for $name {
             type Mirror = Leaf<$name>;
             fn mirror() -> Leaf<$name> {
-                Leaf {
-                    _type: std::marker::PhantomData,
-                }
+                Leaf { _type: PhantomData }
             }
         }
     };
@@ -141,11 +144,17 @@ impl<T: Keyable> Keyable for Vec<T> {
     type Mirror = VecMirror<T>;
 
     fn mirror() -> Self::Mirror {
-        VecMirror(std::marker::PhantomData)
+        VecMirror(PhantomData)
     }
 }
 
-pub struct VecMirror<T>(std::marker::PhantomData<T>);
+pub struct VecMirror<T>(PhantomData<T>);
+
+impl<T> VecMirror<T> {
+    pub const fn new() -> Self {
+        VecMirror(PhantomData)
+    }
+}
 
 impl<T: Keyable> VecMirror<T> {
     pub fn sequence_get(self) -> <T as Keyable>::Mirror {
@@ -215,11 +224,17 @@ where
     type Mirror = HashMapMirror<K, T>;
 
     fn mirror() -> Self::Mirror {
-        HashMapMirror(std::marker::PhantomData, std::marker::PhantomData)
+        HashMapMirror(PhantomData, PhantomData)
     }
 }
 
-pub struct HashMapMirror<K, T>(std::marker::PhantomData<K>, std::marker::PhantomData<T>);
+pub struct HashMapMirror<K, T>(PhantomData<K>, PhantomData<T>);
+
+impl<K, T> HashMapMirror<K, T> {
+    pub const fn new() -> Self {
+        HashMapMirror(PhantomData, PhantomData)
+    }
+}
 
 impl<K, T: Keyable> HashMapMirror<K, T> {
     pub fn map_get(self) -> <T as Keyable>::Mirror {

@@ -1,6 +1,9 @@
 use keypath::{keypath, Keyable};
 use std::collections::HashMap;
 
+// keys that reference collections cannot currently be const
+//const JOJO: keypath::KeyPath<DemoStruct, String> = keypath!(DemoStruct.friend_lists["play"][0].name);
+
 #[derive(Keyable)]
 struct DemoStruct {
     friend_lists: HashMap<String, Vec<Person>>,

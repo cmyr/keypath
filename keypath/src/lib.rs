@@ -79,7 +79,7 @@ impl<Root, Value> KeyPath<Root, Value> {
     /// to be called after a path has been type-checked, presumably in the
     /// context of a proc_macro.
     #[doc(hidden)]
-    pub fn __conjure_from_abyss(fields: &'static [internals::PathComponent]) -> Self {
+    pub const fn __conjure_from_abyss(fields: &'static [internals::PathComponent]) -> Self {
         KeyPath {
             partial: PartialKeyPath {
                 fields: Cow::Borrowed(fields),
@@ -237,4 +237,3 @@ impl<R: ?Sized> Clone for PartialKeyPath<R> {
         }
     }
 }
-

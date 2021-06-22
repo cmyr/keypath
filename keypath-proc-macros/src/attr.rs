@@ -67,12 +67,12 @@ impl Fields {
             _ if self.fields.is_empty() => TokenStream::new(),
             FieldKind::Unnamed => {
                 let types = self.fields.iter().map(|f| &f.ty);
-                quote!( #( <#types as ::keypath::Keyable>::mirror() ),* )
+                quote!( #( <#types as ::keypath::Keyable>::Mirror::new() ),* )
             }
             FieldKind::Named => {
                 let names = self.fields.iter().map(Field::field_tokens);
                 let types = self.fields.iter().map(|f| &f.ty);
-                quote!( #( #names: <#types as ::keypath::Keyable>::mirror() ),* )
+                quote!( #( #names: <#types as ::keypath::Keyable>::Mirror::new() ),* )
             }
         }
     }

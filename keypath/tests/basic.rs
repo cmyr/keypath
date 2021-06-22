@@ -1,4 +1,6 @@
-use keypath::{keypath, Keyable};
+use keypath::{keypath, KeyPath, Keyable};
+
+const NAME_PATH: KeyPath<DemoPerson, String> = keypath!(DemoPerson.name);
 
 #[derive(Keyable)]
 struct DemoPerson {
@@ -13,10 +15,9 @@ fn simple_keypath() {
         magnitude: 42.0,
     };
 
-    let name_path = keypath!(DemoPerson.name);
-    assert_eq!(person[&name_path], "Jojobell");
+    assert_eq!(person[&NAME_PATH], "Jojobell");
     person.name = "Colin".into();
-    assert_eq!(person[&name_path], "Colin");
-    person[&name_path] = "Sriti".into();
-    assert_eq!(person[&name_path], "Sriti");
+    assert_eq!(person[&NAME_PATH], "Colin");
+    person[&NAME_PATH] = "Sriti".into();
+    assert_eq!(person[&NAME_PATH], "Sriti");
 }
