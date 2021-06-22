@@ -52,12 +52,12 @@ impl Fields {
             _ if self.fields.is_empty() => TokenStream::new(),
             FieldKind::Unnamed => {
                 let types = self.fields.iter().map(|f| &f.ty);
-                quote!( #( ::keypath::internals::PathChecker<#types> ),* )
+                quote!( #( <#types as ::keypath::Keyable>::Mirror ),* )
             }
             FieldKind::Named => {
                 let names = self.fields.iter().map(Field::field_tokens);
                 let types = self.fields.iter().map(|f| &f.ty);
-                quote!( #( #names: ::keypath::internals::PathChecker<#types> ),* )
+                quote!( #( #names:  <#types as ::keypath::Keyable>::Mirror ),* )
             }
         }
     }
@@ -66,15 +66,13 @@ impl Fields {
         match self.kind {
             _ if self.fields.is_empty() => TokenStream::new(),
             FieldKind::Unnamed => {
-                let fields = self
-                    .fields
-                    .iter()
-                    .map(|_| quote!(::keypath::internals::PathChecker::default()));
-                quote!( #( #fields ),* )
+                let types = self.fields.iter().map(|f| &f.ty);
+                quote!( #( <#types as ::keypath::Keyable>::mirror() ),* )
             }
             FieldKind::Named => {
                 let names = self.fields.iter().map(Field::field_tokens);
-                quote!( #( #names: ::keypath::internals::PathChecker::default() ),* )
+                let types = self.fields.iter().map(|f| &f.ty);
+                quote!( #( #names: <#types as ::keypath::Keyable>::mirror() ),* )
             }
         }
     }

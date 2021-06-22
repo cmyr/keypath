@@ -33,7 +33,7 @@ struct PathElement {
 
 impl PathElement {
     fn traverse_type(&self) -> proc_macro2::TokenStream {
-        self.element.to_tokens(self.span.into())
+        self.element.mirror_item_access(self.span.into())
     }
 
     fn to_tokens(&self) -> proc_macro2::TokenStream {

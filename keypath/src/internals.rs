@@ -1,5 +1,4 @@
 use std::any::Any;
-use std::marker::PhantomData;
 
 use super::FieldError;
 
@@ -26,19 +25,4 @@ pub enum PathComponent {
     IndexInt(usize),
     /// An index into a map with string keys.
     IndexStr(&'static str),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub struct PathChecker<T>(PhantomData<*const T>);
-
-impl<T: super::Keyable> PathChecker<T> {
-    pub fn mirror(self) -> T::Mirror {
-        T::mirror()
-    }
-}
-
-impl<T> Default for PathChecker<T> {
-    fn default() -> Self {
-        PathChecker(PhantomData)
-    }
 }

@@ -31,16 +31,20 @@ impl PathComponent {
         }
     }
 
-    pub fn to_tokens(&self, span: proc_macro2::Span) -> proc_macro2::TokenStream {
+    /// The tokens generated to access the appropriate field or method on
+    /// the underlying mirror type.
+    pub fn mirror_item_access(&self, span: Span) -> proc_macro2::TokenStream {
         match self {
             PathComponent::Field(FieldIdent::Named(ident)) => {
-                let ident = Ident::new(&ident, Span::call_site());
-                quote_spanned!(span=> .#ident.mirror())
+                let ident = Ident::new(&ident, span);
+                quote_spanned!(span=> .#ident)
             }
             PathComponent::Field(FieldIdent::Unnamed(ident)) => {
                 let lit = Literal::usize_unsuffixed(*ident);
-                quote_spanned!(span=> .#lit.mirror())
+                quote_spanned!(span=> .#lit)
             }
+            // NOTE: we tried generating index syntax to improve error diagnostics
+            // but things got weird. Try again at some point?
             //PathComponent::IndexInt(idx) => quote_spanned!(span=> [#idx]),
             //PathComponent::IndexStr(s) => quote_spanned!(span=> [#s]),
             PathComponent::IndexInt(_) => quote_spanned!(span=> .sequence_get()),
