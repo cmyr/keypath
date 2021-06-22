@@ -40,7 +40,7 @@ pub fn derive_keyable(input: TokenStream) -> TokenStream {
 /// The following are *semantically* valid keypaths. (Their actual validity
 /// would depend on these fields existing in the underlying types.)
 ///
-/// ```no_run
+/// ```no_compile
 /// keypath!(Person.profile.name);
 /// keypath!(Element.size.0);
 /// keypath!(Person.friends[10].name);
