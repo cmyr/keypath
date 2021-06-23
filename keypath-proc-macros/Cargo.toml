@@ -7,9 +7,14 @@ license = "Apache-2.0"
 readme = "../README.md"
 description = "proc macros for the keypath crate"
 repository = "https://github.com/cmyr/keypath"
+autotests = false
 
 [lib]
 proc-macro = true
+
+[[test]]
+name = "tests"
+path = "tests/run.rs"
 
 [dependencies]
 syn = "1.0.39"
@@ -19,3 +24,4 @@ litrs = "0.2.3"
 
 [dev-dependencies]
 keypath = { version = "0.1.0", path = "../keypath" }
+trybuild = { version = "1.0", features = ["diff"] }

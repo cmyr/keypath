@@ -94,28 +94,34 @@ fn expect_root_generics(iter: &mut TokenIter) -> Result<Vec<TokenTree>, SyntaxEr
 
 fn collect_path_components(iter: &mut TokenIter) -> Result<Vec<SpannedComponent>, SyntaxError> {
     let mut result = Vec::new();
-    match iter.next() {
-        None => return Ok(result),
-        Some(TokenTree::Punct(p)) if p.as_char() == '.' => match iter
-            .next()
-            .ok_or_else(|| SyntaxError::new(p.span(), "'.' must be followed by a field"))?
-        {
-            TokenTree::Ident(ident) => result.push(SpannedComponent {
-                span: ident.span(),
-                element: PathComponent::named(ident.to_string()),
-            }),
-            TokenTree::Literal(lit) => append_fields_from_lit(&lit, &mut result)?,
-            other => return Err(SyntaxError::new(other.span(), "expected field identifier")),
-        },
-        Some(TokenTree::Group(g)) if matches!(g.delimiter(), Delimiter::Bracket) => {
-            result.push(expect_index(&g)?);
-        }
-        Some(other) => {
-            eprintln!("BAD TOKEN {:?}", other);
-            return Err(SyntaxError::new(other.span(), "expected '.' or '['"));
+    loop {
+        match iter.next() {
+            None => return Ok(result),
+            Some(TokenTree::Punct(p)) if p.as_char() == '.' => match iter
+                .next()
+                .ok_or_else(|| SyntaxError::new(p.span(), "'.' must be followed by a field"))?
+            {
+                TokenTree::Ident(ident) => result.push(SpannedComponent {
+                    span: ident.span(),
+                    element: PathComponent::named(ident.to_string()),
+                }),
+                TokenTree::Literal(lit) => append_fields_from_lit(&lit, &mut result)?,
+                other => {
+                    return Err(SyntaxError::new(
+                        other.span(),
+                        format!("expected field identifier, found '{}'", other),
+                    ))
+                }
+            },
+            Some(TokenTree::Group(g)) if matches!(g.delimiter(), Delimiter::Bracket) => {
+                result.push(expect_index(&g)?);
+            }
+            Some(other) => {
+                eprintln!("BAD TOKEN {:?}", other);
+                return Err(SyntaxError::new(other.span(), "expected '.' or '['"));
+            }
         }
     }
-    Ok(result)
 }
 
 fn append_fields_from_lit(
