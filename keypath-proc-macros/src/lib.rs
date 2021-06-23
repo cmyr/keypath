@@ -7,6 +7,7 @@ extern crate proc_macro;
 mod attr;
 mod keyable;
 mod keypath;
+mod keypath_parse;
 mod shared;
 
 use proc_macro::TokenStream;
