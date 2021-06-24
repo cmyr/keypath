@@ -1,0 +1,7 @@
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+ --> $DIR/generic_const_fail.rs:8:51
+  |
+8 | const _PATH: KeyPath<Container<String>, String> = keypath!(Container<String>.names[0]);
+  |                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in a macro (in Nightly builds, run with -Z macro-backtrace for more info)

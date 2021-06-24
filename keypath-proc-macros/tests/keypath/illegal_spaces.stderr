@@ -1,5 +1,0 @@
-error: identifiers must be strings or integers
-  --> $DIR/illegal_spaces.rs:10:34
-   |
-10 |     let _ = keypath!(TuplePerson.2. 0);
-   |                                  ^^

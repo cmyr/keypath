@@ -8,4 +8,5 @@ pub struct Size(f64, f64);
 
 fn main() {
     let _ = keypath!(TuplePerson.2. 0);
+    let _ = keypath!(TuplePerson.2..0);
 }

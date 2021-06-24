@@ -1,5 +1,0 @@
-error: expected field identifier, found '.'
-  --> $DIR/illegal_period.rs:10:35
-   |
-10 |     let _ = keypath!(TuplePerson.2..0);
-   |                                   ^^

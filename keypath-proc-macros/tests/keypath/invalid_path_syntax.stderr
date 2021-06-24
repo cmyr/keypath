@@ -1,0 +1,11 @@
+error: identifiers must be strings or integers
+  --> $DIR/invalid_path_syntax.rs:10:34
+   |
+10 |     let _ = keypath!(TuplePerson.2. 0);
+   |                                  ^^
+
+error: expected field identifier, found '.'
+  --> $DIR/invalid_path_syntax.rs:11:35
+   |
+11 |     let _ = keypath!(TuplePerson.2..0);
+   |                                   ^^

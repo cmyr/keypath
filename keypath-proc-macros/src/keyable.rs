@@ -1,18 +1,4 @@
-// Copyright 2019 The Druid Authors.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-//! The implementation for #[derive(Data)]
+//! The implementation for #[derive(Keyable)]
 
 use crate::attr::{FieldKind, Fields};
 
@@ -122,17 +108,23 @@ fn mirror_struct(
     let field_decls = fields.generate_mirror_decls();
     let struct_decl = match fields.kind {
         FieldKind::Named => {
-            quote!(pub struct #mirror_ident #ty_generics{#field_decls})
+            quote!(pub struct #mirror_ident <#impl_generics>{#field_decls})
         }
 
         FieldKind::Unnamed => {
-            quote!(pub struct #mirror_ident #ty_generics(#field_decls);)
+            quote!(pub struct #mirror_ident <#impl_generics>(#field_decls);)
         }
     };
     let struct_decl = quote!(#[allow(non_camel_case_types)]
         #struct_decl);
 
-    let struct_field_init = fields.generate_mirror_inits();
+    let generic_idents = get_generic_idents(generics);
+    let optional_const_token = if generic_idents.is_empty() {
+        quote!(const)
+    } else {
+        proc_macro2::TokenStream::new()
+    };
+    let struct_field_init = fields.generate_mirror_inits(&generic_idents);
     let struct_init = match fields.kind {
         FieldKind::Named => quote!(Self {#struct_field_init}),
         FieldKind::Unnamed => quote!(Self (#struct_field_init)),
@@ -142,11 +134,11 @@ fn mirror_struct(
         #struct_decl
 
         impl< #impl_generics> #mirror_ident #ty_generics {
-            const fn new() -> Self {
+            #optional_const_token fn new() -> Self {
                 #struct_init
             }
 
-        #base_vis const fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
+        #base_vis #optional_const_token fn to_key_path_with_root<Root>(self, fields: &'static [::keypath::internals::PathComponent]) -> ::keypath::KeyPath<Root, #base_ident #ty_generics> {
             ::keypath::KeyPath::__conjure_from_abyss(fields)
         }
         }
@@ -166,6 +158,17 @@ fn mirror_ident_for_base_ident(ident: &Ident) -> Ident {
         &format!("{}{}", DERIVED_MIRROR_STRUCT_PREFIX, ident),
         ident.span(),
     )
+}
+
+fn get_generic_idents(generics: &syn::Generics) -> Vec<Ident> {
+    generics
+        .params
+        .iter()
+        .filter_map(|gp| match gp {
+            syn::GenericParam::Type(ty) => Some(ty.ident.clone()),
+            _ => None,
+        })
+        .collect()
 }
 
 fn add_generic_bounds(
